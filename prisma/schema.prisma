@@ -1,0 +1,150 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUM ───────────────────────────────────────────────────────
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+// ─── 1. USER ────────────────────────────────────────────────────
+
+model User {
+  id       String  @id @default(cuid())
+  username String  @unique
+  email    String  @unique
+  password String? // nullable for Google OAuth users
+
+  // Auth provider
+  provider   AuthProvider @default(LOCAL)
+  providerId String? // Google account ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  categories         Category[]
+  transactions       Transaction[]
+  budgets            Budget[]
+  financialSummaries FinancialSummary[]
+
+  @@map("users")
+}
+
+// ─── 2. CATEGORY ────────────────────────────────────────────────
+
+model Category {
+  id   String          @id @default(cuid())
+  name String // e.g. "Makanan dan minuman", "Gaji bulanan"
+  type TransactionType // INCOME or EXPENSE
+  icon String // MaterialCommunityIcons name, e.g. "silverware-fork-knife"
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name, type])
+  @@map("categories")
+}
+
+// ─── 3. TRANSACTION ─────────────────────────────────────────────
+
+model Transaction {
+  id     String          @id @default(cuid())
+  name   String // e.g. "Makan siang", "Gaji bulanan"
+  amount Decimal         @db.Decimal(15, 2)
+  type   TransactionType
+  date   DateTime // tanggal transaksi yang dipilih user
+  note   String?
+
+  // Category
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([userId, categoryId])
+  @@map("transactions")
+}
+
+// ─── 4. BUDGET ──────────────────────────────────────────────────
+
+model Budget {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(15, 2) // alokasi budget untuk kategori ini
+
+  // Periode
+  month Int // 1-12
+  year  Int // e.g. 2026
+
+  // Category yang dialokasikan
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, categoryId, month, year]) // 1 alokasi per kategori per bulan
+  @@index([userId, month, year])
+  @@map("budgets")
+}
+
+// ─── 5. FINANCIAL SUMMARY ───────────────────────────────────────
+
+model FinancialSummary {
+  id String @id @default(cuid())
+
+  // Periode
+  month Int // 1-12
+  year  Int // e.g. 2026
+
+  // Ringkasan keuangan bulanan
+  totalIncome  Decimal @default(0) @db.Decimal(15, 2)
+  totalExpense Decimal @default(0) @db.Decimal(15, 2)
+  totalBudget  Decimal @default(0) @db.Decimal(15, 2) // total semua alokasi budget bulan ini
+  balance      Decimal @default(0) @db.Decimal(15, 2) // totalIncome - totalExpense
+  savings      Decimal @default(0) @db.Decimal(15, 2) // sisa yang ditabung
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month, year]) // 1 summary per bulan per user
+  @@map("financial_summaries")
+}
