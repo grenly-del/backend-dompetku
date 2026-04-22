@@ -9,13 +9,34 @@ import { prisma } from './config/adapterDB'
 import { ConnectDB } from './config/connectDB'
 import routes from './routes'
 const app = express()
+const isProduction = process.env.NODE_ENV === 'production'
+
+function isAllowedDevOrigin(origin: string) {
+    if (isProduction) {
+        return false
+    }
+
+    try {
+        const { hostname } = new URL(origin)
+        return hostname === 'localhost' || hostname === '127.0.0.1'
+    } catch {
+        return false
+    }
+}
 
 ConnectDB(prisma)
 app.use(helmet())
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(cors({
-    origin: APPS.CLIENT_URL,
+    origin(origin, callback) {
+        if (!origin || APPS.CLIENT_URLS.includes(origin) || isAllowedDevOrigin(origin)) {
+            callback(null, true)
+            return
+        }
+
+        callback(new Error('Not allowed by CORS'))
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
 }))
