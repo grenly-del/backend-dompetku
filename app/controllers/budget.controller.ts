@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { prisma } from '../config/adapterDB'
 import { AuthRequest } from '../middlewares/auth'
-import { upsertBudgetSchema, budgetQuerySchema } from '../validations/budget'
+import { upsertBudgetSchema, updateBudgetItemSchema, budgetQuerySchema } from '../validations/budget'
 import { findOwnedCategories } from '../utils/category-ownership'
 
 // GET /api/budgets?month=4&year=2026
@@ -88,6 +88,56 @@ export const upsertBudget = async (req: AuthRequest, res: Response): Promise<voi
         res.status(200).json({ message: 'Budget berhasil disimpan', count: results.length })
     } catch (err) {
         console.error('Upsert budget error:', err)
+        res.status(500).json({ message: 'Terjadi kesalahan server' })
+    }
+}
+
+// PUT /api/budgets/:id
+export const updateBudgetItem = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const parsed = updateBudgetItemSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({ message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors })
+            return
+        }
+
+        const result = await prisma.budget.updateMany({
+            where: { id: req.params.id, userId: req.userId! },
+            data: { amount: parsed.data.amount },
+        })
+
+        if (result.count === 0) {
+            res.status(404).json({ message: 'Budget tidak ditemukan' })
+            return
+        }
+
+        const budget = await prisma.budget.findFirst({
+            where: { id: req.params.id, userId: req.userId! },
+            include: { category: { select: { id: true, name: true, icon: true, type: true } } },
+        })
+
+        res.status(200).json({ message: 'Budget berhasil diupdate', budget })
+    } catch (err) {
+        console.error('Update budget item error:', err)
+        res.status(500).json({ message: 'Terjadi kesalahan server' })
+    }
+}
+
+// DELETE /api/budgets/:id
+export const deleteBudgetItem = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const result = await prisma.budget.deleteMany({
+            where: { id: req.params.id, userId: req.userId! },
+        })
+
+        if (result.count === 0) {
+            res.status(404).json({ message: 'Budget tidak ditemukan' })
+            return
+        }
+
+        res.status(200).json({ message: 'Budget berhasil dihapus' })
+    } catch (err) {
+        console.error('Delete budget item error:', err)
         res.status(500).json({ message: 'Terjadi kesalahan server' })
     }
 }

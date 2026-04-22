@@ -13,7 +13,7 @@ const router = Router()
 // All transaction routes are protected
 router.use(authenticate)
 
-// GET    /api/transactions?type=&categoryId=&month=&year=&page=&limit=
+// GET    /api/transactions?type=&categoryId=&month=&year=&startDate=&endDate=&page=&limit=
 router.get('/', getTransactions)
 
 // GET    /api/transactions/:id

@@ -59,7 +59,7 @@ export const updateCategory = async (req: AuthRequest, res: Response): Promise<v
         }
 
         const category = await prisma.category.updateMany({
-            where: { id: req.params.id, userId: req.userId },
+            where: { id: req.params.id, userId: req.userId! },
             data: parsed.data,
         })
 
@@ -68,8 +68,17 @@ export const updateCategory = async (req: AuthRequest, res: Response): Promise<v
             return
         }
 
-        res.status(200).json({ message: 'Kategori berhasil diupdate' })
-    } catch (err) {
+        const updatedCategory = await prisma.category.findFirst({
+            where: { id: req.params.id, userId: req.userId! },
+            include: { _count: { select: { transactions: true } } },
+        })
+
+        res.status(200).json({ message: 'Kategori berhasil diupdate', category: updatedCategory })
+    } catch (err: any) {
+        if (err?.code === 'P2002') {
+            res.status(409).json({ message: 'Kategori dengan nama dan tipe ini sudah ada' })
+            return
+        }
         console.error('Update category error:', err)
         res.status(500).json({ message: 'Terjadi kesalahan server' })
     }

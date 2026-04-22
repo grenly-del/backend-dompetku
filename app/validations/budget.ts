@@ -9,6 +9,10 @@ export const upsertBudgetSchema = z.object({
     })).min(1, 'Minimal 1 alokasi kategori'),
 })
 
+export const updateBudgetItemSchema = z.object({
+    amount: z.number().min(0, 'Jumlah minimal 0'),
+})
+
 export const budgetQuerySchema = z.object({
     month: z.coerce.number().min(1).max(12),
     year: z.coerce.number().min(2020).max(2100),
