@@ -3,10 +3,36 @@
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "set NODE_ENV=development&& tsx watch app/server.ts",
+    "build": "node build.js",
+    "start": "set NODE_ENV=production&& node dist/server.js",
+    "migrate:dev": "cross-env NODE_ENV=development npx prisma migrate dev --name init",
+    "migrate:prod": "npx prisma migrate deploy",
+    "migrate:gen": "npx prisma generate",
+    "migrate:reset": "cross-env NODE_ENV=development prisma migrate reset",
+    "migrate:status": "cross-env NODE_ENV=development prisma migrate status"
+  },
+  "author": "",
+  "main": "index.js",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "cross-env": "^10.1.0",
+    "dayjs": "^1.11.20",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^7.7.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.6.0",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.21.0"
   }
 }
