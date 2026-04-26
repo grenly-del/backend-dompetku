@@ -1,5 +1,4 @@
 
-
 export const ConnectDB = async (prisma: any) => {
     try {
         // Actually test the connection with a simple query

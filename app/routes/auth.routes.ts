@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
     register,
     login,
+    resetPassword,
     getCurrentUser,
     getProfile,
     getAccountSummary,
@@ -19,6 +20,8 @@ router.post('/register', register)
 // POST /api/auth/login
 router.post('/login', login)
 
+// POST /api/auth/reset-password — public (no auth required)
+router.post('/reset-password', resetPassword)
 // GET /api/auth/profile — protected
 router.get('/me', authenticate, getCurrentUser)
 router.get('/profile', authenticate, getProfile)

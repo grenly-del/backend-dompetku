@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../config/adapterDB'
 import { SECRET } from '../config'
-import { registerSchema, loginSchema, updateProfileSchema, changePasswordSchema } from '../validations/auth'
+import { registerSchema, loginSchema, updateProfileSchema, changePasswordSchema, resetPasswordSchema } from '../validations/auth'
 import { AuthRequest } from '../middlewares/auth'
 
 const PASSWORD_SALT_ROUNDS = 10
@@ -297,6 +297,40 @@ export const deleteAccount = async (req: AuthRequest, res: Response): Promise<vo
         res.status(200).json({ message: 'Akun berhasil dihapus' })
     } catch (err) {
         console.error('Delete account error:', err)
+        res.status(500).json({ message: 'Terjadi kesalahan server' })
+    }
+}
+
+// POST /api/auth/reset-password
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const parsed = resetPasswordSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({ message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors })
+            return
+        }
+
+        const { email, newPassword } = parsed.data
+
+        const user = await prisma.user.findUnique({ where: { email } })
+        if (!user) {
+            res.status(404).json({ message: 'Email tidak terdaftar' })
+            return
+        }
+
+        if (!user.password) {
+            res.status(400).json({ message: 'Akun ini menggunakan Google Sign-In dan tidak memiliki password lokal' })
+            return
+        }
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: await hashPassword(newPassword) },
+        })
+
+        res.status(200).json({ message: 'Password berhasil direset' })
+    } catch (err) {
+        console.error('Reset password error:', err)
         res.status(500).json({ message: 'Terjadi kesalahan server' })
     }
 }
