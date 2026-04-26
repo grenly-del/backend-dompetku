@@ -7,6 +7,8 @@ const SECRET = {
     JWT_SECRET: process.env.JWT_SECRET || "",
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "1h",
 }
+
+console.log(SECRET)
 const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "http://localhost:3001")
     .split(',')
     .map((url) => url.trim())
