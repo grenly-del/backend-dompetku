@@ -44,6 +44,8 @@ export const getOverview = async (req: AuthRequest, res: Response): Promise<void
 
         res.status(200).json({
             totalBalance: totalIncome - totalExpense,
+            totalIncome,
+            totalExpense,
         })
     } catch (err) {
         console.error('Get overview error:', err)
