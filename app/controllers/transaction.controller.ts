@@ -133,16 +133,72 @@ export const createTransaction = async (req: AuthRequest, res: Response): Promis
             return
         }
 
+        const transactionDate = new Date(date)
         const transaction = await prisma.transaction.create({
             data: {
                 ...rest,
-                date: new Date(date),
+                date: transactionDate,
                 userId: req.userId!,
             },
             include: { category: { select: { id: true, name: true, icon: true, type: true } } },
         })
 
-        res.status(201).json({ message: 'Transaksi berhasil ditambahkan', transaction })
+        // Check budget warning for EXPENSE transactions
+        let budgetWarning: {
+            categoryName: string
+            budgetAmount: number
+            totalSpent: number
+            overAmount: number
+        } | null = null
+
+        if (rest.type === 'EXPENSE') {
+            const txMonth = transactionDate.getMonth() + 1
+            const txYear = transactionDate.getFullYear()
+
+            const budget = await prisma.budget.findUnique({
+                where: {
+                    userId_categoryId_month_year: {
+                        userId: req.userId!,
+                        categoryId: rest.categoryId,
+                        month: txMonth,
+                        year: txYear,
+                    },
+                },
+            })
+
+            if (budget) {
+                const startOfMonth = new Date(txYear, txMonth - 1, 1)
+                const endOfMonth = new Date(txYear, txMonth, 0, 23, 59, 59, 999)
+
+                const aggregate = await prisma.transaction.aggregate({
+                    where: {
+                        userId: req.userId!,
+                        categoryId: rest.categoryId,
+                        type: 'EXPENSE',
+                        date: { gte: startOfMonth, lte: endOfMonth },
+                    },
+                    _sum: { amount: true },
+                })
+
+                const totalSpent = Number(aggregate._sum.amount || 0)
+                const budgetAmount = Number(budget.amount)
+
+                if (totalSpent > budgetAmount) {
+                    budgetWarning = {
+                        categoryName: category.name,
+                        budgetAmount,
+                        totalSpent,
+                        overAmount: totalSpent - budgetAmount,
+                    }
+                }
+            }
+        }
+
+        res.status(201).json({
+            message: 'Transaksi berhasil ditambahkan',
+            transaction,
+            budgetWarning,
+        })
     } catch (err) {
         console.error('Create transaction error:', err)
         res.status(500).json({ message: 'Terjadi kesalahan server' })
