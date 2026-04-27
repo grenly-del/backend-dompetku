@@ -58,6 +58,30 @@ async function verifyPassword(input: string, stored: string) {
     return input === stored
 }
 
+/**
+ * Normalize nomor WhatsApp ke format internasional Indonesia (+62...)
+ * Contoh: 082187199940 → +6282187199940
+ *         6282187199940 → +6282187199940
+ *         +6282187199940 → +6282187199940
+ */
+function formatWhatsapp(phone: string | undefined | null): string | null {
+    if (!phone) return null
+    let cleaned = phone.trim()
+    if (!cleaned) return null
+
+    if (cleaned.startsWith('+62')) {
+        return cleaned
+    }
+    if (cleaned.startsWith('62')) {
+        return '+' + cleaned
+    }
+    if (cleaned.startsWith('0')) {
+        return '+62' + cleaned.slice(1)
+    }
+
+    return '+62' + cleaned
+}
+
 // POST /api/auth/register
 export const register = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -83,7 +107,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 username,
                 email,
                 password: await hashPassword(password),
-                whatsapp: whatsapp || null,
+                whatsapp: formatWhatsapp(whatsapp),
             },
             select: publicUserSelect
         })
@@ -212,7 +236,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
             data: {
                 username,
                 email,
-                whatsapp: whatsapp === '' ? null : whatsapp,
+                whatsapp: whatsapp === '' ? null : formatWhatsapp(whatsapp),
             },
             select: publicUserSelect,
         })

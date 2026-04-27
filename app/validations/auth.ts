@@ -6,8 +6,8 @@ export const registerSchema = z.object({
     password: z.string().min(6, 'Password minimal 6 karakter'),
     whatsapp: z.string().trim()
         .min(10, 'Nomor WhatsApp minimal 10 digit')
-        .max(15, 'Nomor WhatsApp maksimal 15 digit')
-        .regex(/^62\d+$/, 'Nomor WhatsApp harus diawali 62 dan hanya berisi angka')
+        .max(16, 'Nomor WhatsApp maksimal 16 karakter')
+        .regex(/^(\+62|62|0)\d{8,13}$/, 'Format nomor WhatsApp tidak valid (contoh: 082187199940)')
         .optional()
         .or(z.literal('')),
 })
@@ -22,8 +22,8 @@ export const updateProfileSchema = z.object({
     email: z.string().trim().email('Format email tidak valid'),
     whatsapp: z.string().trim()
         .min(10, 'Nomor WhatsApp minimal 10 digit')
-        .max(15, 'Nomor WhatsApp maksimal 15 digit')
-        .regex(/^62\d+$/, 'Nomor WhatsApp harus diawali 62 dan hanya berisi angka')
+        .max(16, 'Nomor WhatsApp maksimal 16 karakter')
+        .regex(/^(\+62|62|0)\d{8,13}$/, 'Format nomor WhatsApp tidak valid (contoh: 082187199940)')
         .optional()
         .or(z.literal(''))
         .nullable(),
