@@ -91,7 +91,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             return
         }
 
-        const { username, email, password, whatsapp } = parsed.data
+        const { username, email, password, whatsapp, phoneNumber, phone } = parsed.data
+        const phoneInput = whatsapp ?? phoneNumber ?? phone
 
         // Check if user already exists
         const existing = await prisma.user.findFirst({
@@ -107,7 +108,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 username,
                 email,
                 password: await hashPassword(password),
-                whatsapp: formatWhatsapp(whatsapp),
+                whatsapp: formatWhatsapp(phoneInput),
             },
             select: publicUserSelect
         })
@@ -216,7 +217,8 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
             return
         }
 
-        const { username, email, whatsapp } = parsed.data
+        const { username, email, whatsapp, phoneNumber, phone } = parsed.data
+        const phoneInput = whatsapp ?? phoneNumber ?? phone
 
         const conflict = await prisma.user.findFirst({
             where: {
@@ -236,7 +238,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
             data: {
                 username,
                 email,
-                whatsapp: whatsapp === '' ? null : formatWhatsapp(whatsapp),
+                whatsapp: phoneInput === '' ? null : formatWhatsapp(phoneInput),
             },
             select: publicUserSelect,
         })

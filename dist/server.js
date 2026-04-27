@@ -29,6 +29,358 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// node_modules/object-assign/index.js
+var require_object_assign = __commonJS({
+  "node_modules/object-assign/index.js"(exports2, module2) {
+    "use strict";
+    var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    var propIsEnumerable = Object.prototype.propertyIsEnumerable;
+    function toObject(val) {
+      if (val === null || val === void 0) {
+        throw new TypeError("Object.assign cannot be called with null or undefined");
+      }
+      return Object(val);
+    }
+    function shouldUseNative() {
+      try {
+        if (!Object.assign) {
+          return false;
+        }
+        var test1 = new String("abc");
+        test1[5] = "de";
+        if (Object.getOwnPropertyNames(test1)[0] === "5") {
+          return false;
+        }
+        var test2 = {};
+        for (var i = 0; i < 10; i++) {
+          test2["_" + String.fromCharCode(i)] = i;
+        }
+        var order2 = Object.getOwnPropertyNames(test2).map(function(n) {
+          return test2[n];
+        });
+        if (order2.join("") !== "0123456789") {
+          return false;
+        }
+        var test3 = {};
+        "abcdefghijklmnopqrst".split("").forEach(function(letter) {
+          test3[letter] = letter;
+        });
+        if (Object.keys(Object.assign({}, test3)).join("") !== "abcdefghijklmnopqrst") {
+          return false;
+        }
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+    module2.exports = shouldUseNative() ? Object.assign : function(target, source) {
+      var from;
+      var to = toObject(target);
+      var symbols;
+      for (var s = 1; s < arguments.length; s++) {
+        from = Object(arguments[s]);
+        for (var key in from) {
+          if (hasOwnProperty.call(from, key)) {
+            to[key] = from[key];
+          }
+        }
+        if (getOwnPropertySymbols) {
+          symbols = getOwnPropertySymbols(from);
+          for (var i = 0; i < symbols.length; i++) {
+            if (propIsEnumerable.call(from, symbols[i])) {
+              to[symbols[i]] = from[symbols[i]];
+            }
+          }
+        }
+      }
+      return to;
+    };
+  }
+});
+
+// node_modules/vary/index.js
+var require_vary = __commonJS({
+  "node_modules/vary/index.js"(exports2, module2) {
+    "use strict";
+    module2.exports = vary;
+    module2.exports.append = append;
+    var FIELD_NAME_REGEXP = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+    function append(header, field) {
+      if (typeof header !== "string") {
+        throw new TypeError("header argument is required");
+      }
+      if (!field) {
+        throw new TypeError("field argument is required");
+      }
+      var fields = !Array.isArray(field) ? parse3(String(field)) : field;
+      for (var j = 0; j < fields.length; j++) {
+        if (!FIELD_NAME_REGEXP.test(fields[j])) {
+          throw new TypeError("field argument contains an invalid header name");
+        }
+      }
+      if (header === "*") {
+        return header;
+      }
+      var val = header;
+      var vals = parse3(header.toLowerCase());
+      if (fields.indexOf("*") !== -1 || vals.indexOf("*") !== -1) {
+        return "*";
+      }
+      for (var i = 0; i < fields.length; i++) {
+        var fld = fields[i].toLowerCase();
+        if (vals.indexOf(fld) === -1) {
+          vals.push(fld);
+          val = val ? val + ", " + fields[i] : fields[i];
+        }
+      }
+      return val;
+    }
+    function parse3(header) {
+      var end = 0;
+      var list = [];
+      var start = 0;
+      for (var i = 0, len = header.length; i < len; i++) {
+        switch (header.charCodeAt(i)) {
+          case 32:
+            if (start === end) {
+              start = end = i + 1;
+            }
+            break;
+          case 44:
+            list.push(header.substring(start, end));
+            start = end = i + 1;
+            break;
+          default:
+            end = i + 1;
+            break;
+        }
+      }
+      list.push(header.substring(start, end));
+      return list;
+    }
+    function vary(res, field) {
+      if (!res || !res.getHeader || !res.setHeader) {
+        throw new TypeError("res argument is required");
+      }
+      var val = res.getHeader("Vary") || "";
+      var header = Array.isArray(val) ? val.join(", ") : String(val);
+      if (val = append(header, field)) {
+        res.setHeader("Vary", val);
+      }
+    }
+  }
+});
+
+// node_modules/cors/lib/index.js
+var require_lib = __commonJS({
+  "node_modules/cors/lib/index.js"(exports2, module2) {
+    "use strict";
+    (function() {
+      "use strict";
+      var assign = require_object_assign();
+      var vary = require_vary();
+      var defaults2 = {
+        origin: "*",
+        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+        preflightContinue: false,
+        optionsSuccessStatus: 204
+      };
+      function isString(s) {
+        return typeof s === "string" || s instanceof String;
+      }
+      function isOriginAllowed(origin, allowedOrigin) {
+        if (Array.isArray(allowedOrigin)) {
+          for (var i = 0; i < allowedOrigin.length; ++i) {
+            if (isOriginAllowed(origin, allowedOrigin[i])) {
+              return true;
+            }
+          }
+          return false;
+        } else if (isString(allowedOrigin)) {
+          return origin === allowedOrigin;
+        } else if (allowedOrigin instanceof RegExp) {
+          return allowedOrigin.test(origin);
+        } else {
+          return !!allowedOrigin;
+        }
+      }
+      function configureOrigin(options, req) {
+        var requestOrigin = req.headers.origin, headers = [], isAllowed;
+        if (!options.origin || options.origin === "*") {
+          headers.push([{
+            key: "Access-Control-Allow-Origin",
+            value: "*"
+          }]);
+        } else if (isString(options.origin)) {
+          headers.push([{
+            key: "Access-Control-Allow-Origin",
+            value: options.origin
+          }]);
+          headers.push([{
+            key: "Vary",
+            value: "Origin"
+          }]);
+        } else {
+          isAllowed = isOriginAllowed(requestOrigin, options.origin);
+          headers.push([{
+            key: "Access-Control-Allow-Origin",
+            value: isAllowed ? requestOrigin : false
+          }]);
+          headers.push([{
+            key: "Vary",
+            value: "Origin"
+          }]);
+        }
+        return headers;
+      }
+      function configureMethods(options) {
+        var methods = options.methods;
+        if (methods.join) {
+          methods = options.methods.join(",");
+        }
+        return {
+          key: "Access-Control-Allow-Methods",
+          value: methods
+        };
+      }
+      function configureCredentials(options) {
+        if (options.credentials === true) {
+          return {
+            key: "Access-Control-Allow-Credentials",
+            value: "true"
+          };
+        }
+        return null;
+      }
+      function configureAllowedHeaders(options, req) {
+        var allowedHeaders = options.allowedHeaders || options.headers;
+        var headers = [];
+        if (!allowedHeaders) {
+          allowedHeaders = req.headers["access-control-request-headers"];
+          headers.push([{
+            key: "Vary",
+            value: "Access-Control-Request-Headers"
+          }]);
+        } else if (allowedHeaders.join) {
+          allowedHeaders = allowedHeaders.join(",");
+        }
+        if (allowedHeaders && allowedHeaders.length) {
+          headers.push([{
+            key: "Access-Control-Allow-Headers",
+            value: allowedHeaders
+          }]);
+        }
+        return headers;
+      }
+      function configureExposedHeaders(options) {
+        var headers = options.exposedHeaders;
+        if (!headers) {
+          return null;
+        } else if (headers.join) {
+          headers = headers.join(",");
+        }
+        if (headers && headers.length) {
+          return {
+            key: "Access-Control-Expose-Headers",
+            value: headers
+          };
+        }
+        return null;
+      }
+      function configureMaxAge(options) {
+        var maxAge = (typeof options.maxAge === "number" || options.maxAge) && options.maxAge.toString();
+        if (maxAge && maxAge.length) {
+          return {
+            key: "Access-Control-Max-Age",
+            value: maxAge
+          };
+        }
+        return null;
+      }
+      function applyHeaders(headers, res) {
+        for (var i = 0, n = headers.length; i < n; i++) {
+          var header = headers[i];
+          if (header) {
+            if (Array.isArray(header)) {
+              applyHeaders(header, res);
+            } else if (header.key === "Vary" && header.value) {
+              vary(res, header.value);
+            } else if (header.value) {
+              res.setHeader(header.key, header.value);
+            }
+          }
+        }
+      }
+      function cors2(options, req, res, next) {
+        var headers = [], method = req.method && req.method.toUpperCase && req.method.toUpperCase();
+        if (method === "OPTIONS") {
+          headers.push(configureOrigin(options, req));
+          headers.push(configureCredentials(options));
+          headers.push(configureMethods(options));
+          headers.push(configureAllowedHeaders(options, req));
+          headers.push(configureMaxAge(options));
+          headers.push(configureExposedHeaders(options));
+          applyHeaders(headers, res);
+          if (options.preflightContinue) {
+            next();
+          } else {
+            res.statusCode = options.optionsSuccessStatus;
+            res.setHeader("Content-Length", "0");
+            res.end();
+          }
+        } else {
+          headers.push(configureOrigin(options, req));
+          headers.push(configureCredentials(options));
+          headers.push(configureExposedHeaders(options));
+          applyHeaders(headers, res);
+          next();
+        }
+      }
+      function middlewareWrapper(o) {
+        var optionsCallback = null;
+        if (typeof o === "function") {
+          optionsCallback = o;
+        } else {
+          optionsCallback = function(req, cb) {
+            cb(null, o);
+          };
+        }
+        return function corsMiddleware(req, res, next) {
+          optionsCallback(req, function(err, options) {
+            if (err) {
+              next(err);
+            } else {
+              var corsOptions = assign({}, defaults2, options);
+              var originCallback = null;
+              if (corsOptions.origin && typeof corsOptions.origin === "function") {
+                originCallback = corsOptions.origin;
+              } else if (corsOptions.origin) {
+                originCallback = function(origin, cb) {
+                  cb(null, corsOptions.origin);
+                };
+              }
+              if (originCallback) {
+                originCallback(req.headers.origin, function(err2, origin) {
+                  if (err2 || !origin) {
+                    next(err2);
+                  } else {
+                    corsOptions.origin = origin;
+                    cors2(corsOptions, req, res, next);
+                  }
+                });
+              } else {
+                next();
+              }
+            }
+          });
+        };
+      }
+      module2.exports = middlewareWrapper;
+    })();
+  }
+});
+
 // node_modules/pg-types/node_modules/postgres-array/index.js
 var require_postgres_array = __commonJS({
   "node_modules/pg-types/node_modules/postgres-array/index.js"(exports2) {
@@ -3610,7 +3962,7 @@ var require_helper = __commonJS({
 });
 
 // node_modules/pgpass/lib/index.js
-var require_lib = __commonJS({
+var require_lib2 = __commonJS({
   "node_modules/pgpass/lib/index.js"(exports2, module2) {
     "use strict";
     var path2 = require("path");
@@ -3857,7 +4209,7 @@ var require_client = __commonJS({
           cb();
         } else {
           try {
-            const pgPass = require_lib();
+            const pgPass = require_lib2();
             pgPass(this.connectionParameters, (pass) => {
               if (void 0 !== pass) {
                 pgPassDeprecationNotice();
@@ -4328,7 +4680,7 @@ var require_pg_pool = __commonJS({
         this.options.maxLifetimeSeconds = this.options.maxLifetimeSeconds || 0;
         this.log = this.options.log || function() {
         };
-        this.Client = this.options.Client || Client2 || require_lib2().Client;
+        this.Client = this.options.Client || Client2 || require_lib3().Client;
         this.Promise = this.options.Promise || global.Promise;
         if (typeof this.options.idleTimeoutMillis === "undefined") {
           this.options.idleTimeoutMillis = 1e4;
@@ -5079,7 +5431,7 @@ var require_native = __commonJS({
 });
 
 // node_modules/pg/lib/index.js
-var require_lib2 = __commonJS({
+var require_lib3 = __commonJS({
   "node_modules/pg/lib/index.js"(exports2, module2) {
     "use strict";
     var Client2 = require_client();
@@ -14132,6 +14484,7 @@ var require_client4 = __commonJS({
       username: "username",
       email: "email",
       password: "password",
+      whatsapp: "whatsapp",
       provider: "provider",
       providerId: "providerId",
       createdAt: "createdAt",
@@ -14214,13 +14567,13 @@ var require_client4 = __commonJS({
       "clientVersion": "7.7.0",
       "engineVersion": "75cbdc1eb7150937890ad5465d861175c6624711",
       "activeProvider": "postgresql",
-      "inlineSchema": '// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = "prisma-client-js"\n}\n\ndatasource db {\n  provider = "postgresql"\n}\n\n// \u2500\u2500\u2500 ENUM \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nenum TransactionType {\n  INCOME\n  EXPENSE\n}\n\nenum AuthProvider {\n  LOCAL\n  GOOGLE\n}\n\n// \u2500\u2500\u2500 1. USER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel User {\n  id       String  @id @default(cuid())\n  username String  @unique\n  email    String  @unique\n  password String? // nullable for Google OAuth users\n\n  // Auth provider\n  provider   AuthProvider @default(LOCAL)\n  providerId String? // Google account ID\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  categories         Category[]\n  transactions       Transaction[]\n  budgets            Budget[]\n  financialSummaries FinancialSummary[]\n\n  @@map("users")\n}\n\n// \u2500\u2500\u2500 2. CATEGORY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel Category {\n  id   String          @id @default(cuid())\n  name String // e.g. "Makanan dan minuman", "Gaji bulanan"\n  type TransactionType // INCOME or EXPENSE\n  icon String // MaterialCommunityIcons name, e.g. "silverware-fork-knife"\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  isActive  Boolean  @default(true)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  transactions Transaction[]\n  budgets      Budget[]\n\n  @@unique([userId, name, type])\n  @@map("categories")\n}\n\n// \u2500\u2500\u2500 3. TRANSACTION \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel Transaction {\n  id     String          @id @default(cuid())\n  name   String // e.g. "Makan siang", "Gaji bulanan"\n  amount Decimal         @db.Decimal(15, 2)\n  type   TransactionType\n  date   DateTime // tanggal transaksi yang dipilih user\n  note   String?\n\n  // Category\n  categoryId String\n  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([userId, date])\n  @@index([userId, type])\n  @@index([userId, categoryId])\n  @@map("transactions")\n}\n\n// \u2500\u2500\u2500 4. BUDGET \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel Budget {\n  id     String  @id @default(cuid())\n  amount Decimal @db.Decimal(15, 2) // alokasi budget untuk kategori ini\n\n  // Periode\n  month Int // 1-12\n  year  Int // e.g. 2026\n\n  // Category yang dialokasikan\n  categoryId String\n  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@unique([userId, categoryId, month, year]) // 1 alokasi per kategori per bulan\n  @@index([userId, month, year])\n  @@map("budgets")\n}\n\n// \u2500\u2500\u2500 5. FINANCIAL SUMMARY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel FinancialSummary {\n  id String @id @default(cuid())\n\n  // Periode\n  month Int // 1-12\n  year  Int // e.g. 2026\n\n  // Ringkasan keuangan bulanan\n  totalIncome  Decimal @default(0) @db.Decimal(15, 2)\n  totalExpense Decimal @default(0) @db.Decimal(15, 2)\n  totalBudget  Decimal @default(0) @db.Decimal(15, 2) // total semua alokasi budget bulan ini\n  balance      Decimal @default(0) @db.Decimal(15, 2) // totalIncome - totalExpense\n  savings      Decimal @default(0) @db.Decimal(15, 2) // sisa yang ditabung\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@unique([userId, month, year]) // 1 summary per bulan per user\n  @@map("financial_summaries")\n}\n'
+      "inlineSchema": '// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = "prisma-client-js"\n}\n\ndatasource db {\n  provider = "postgresql"\n}\n\n// \u2500\u2500\u2500 ENUM \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nenum TransactionType {\n  INCOME\n  EXPENSE\n}\n\nenum AuthProvider {\n  LOCAL\n  GOOGLE\n}\n\n// \u2500\u2500\u2500 1. USER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel User {\n  id       String  @id @default(cuid())\n  username String  @unique\n  email    String  @unique\n  password String? // nullable for Google OAuth users\n  whatsapp String? // nomor WhatsApp user, e.g. "6281234567890"\n\n  // Auth provider\n  provider   AuthProvider @default(LOCAL)\n  providerId String? // Google account ID\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  categories         Category[]\n  transactions       Transaction[]\n  budgets            Budget[]\n  financialSummaries FinancialSummary[]\n\n  @@map("users")\n}\n\n// \u2500\u2500\u2500 2. CATEGORY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel Category {\n  id   String          @id @default(cuid())\n  name String // e.g. "Makanan dan minuman", "Gaji bulanan"\n  type TransactionType // INCOME or EXPENSE\n  icon String // MaterialCommunityIcons name, e.g. "silverware-fork-knife"\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  isActive  Boolean  @default(true)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  transactions Transaction[]\n  budgets      Budget[]\n\n  @@unique([userId, name, type])\n  @@map("categories")\n}\n\n// \u2500\u2500\u2500 3. TRANSACTION \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel Transaction {\n  id     String          @id @default(cuid())\n  name   String // e.g. "Makan siang", "Gaji bulanan"\n  amount Decimal         @db.Decimal(15, 2)\n  type   TransactionType\n  date   DateTime // tanggal transaksi yang dipilih user\n  note   String?\n\n  // Category\n  categoryId String\n  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([userId, date])\n  @@index([userId, type])\n  @@index([userId, categoryId])\n  @@map("transactions")\n}\n\n// \u2500\u2500\u2500 4. BUDGET \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel Budget {\n  id     String  @id @default(cuid())\n  amount Decimal @db.Decimal(15, 2) // alokasi budget untuk kategori ini\n\n  // Periode\n  month Int // 1-12\n  year  Int // e.g. 2026\n\n  // Category yang dialokasikan\n  categoryId String\n  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@unique([userId, categoryId, month, year]) // 1 alokasi per kategori per bulan\n  @@index([userId, month, year])\n  @@map("budgets")\n}\n\n// \u2500\u2500\u2500 5. FINANCIAL SUMMARY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nmodel FinancialSummary {\n  id String @id @default(cuid())\n\n  // Periode\n  month Int // 1-12\n  year  Int // e.g. 2026\n\n  // Ringkasan keuangan bulanan\n  totalIncome  Decimal @default(0) @db.Decimal(15, 2)\n  totalExpense Decimal @default(0) @db.Decimal(15, 2)\n  totalBudget  Decimal @default(0) @db.Decimal(15, 2) // total semua alokasi budget bulan ini\n  balance      Decimal @default(0) @db.Decimal(15, 2) // totalIncome - totalExpense\n  savings      Decimal @default(0) @db.Decimal(15, 2) // sisa yang ditabung\n\n  // Owner\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@unique([userId, month, year]) // 1 summary per bulan per user\n  @@map("financial_summaries")\n}\n'
     };
-    config2.runtimeDataModel = JSON.parse('{"models":{"User":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"username","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"password","kind":"scalar","type":"String"},{"name":"provider","kind":"enum","type":"AuthProvider"},{"name":"providerId","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"categories","kind":"object","type":"Category","relationName":"CategoryToUser"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"TransactionToUser"},{"name":"budgets","kind":"object","type":"Budget","relationName":"BudgetToUser"},{"name":"financialSummaries","kind":"object","type":"FinancialSummary","relationName":"FinancialSummaryToUser"}],"dbName":"users"},"Category":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"type","kind":"enum","type":"TransactionType"},{"name":"icon","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"CategoryToUser"},{"name":"isActive","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"CategoryToTransaction"},{"name":"budgets","kind":"object","type":"Budget","relationName":"BudgetToCategory"}],"dbName":"categories"},"Transaction":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"amount","kind":"scalar","type":"Decimal"},{"name":"type","kind":"enum","type":"TransactionType"},{"name":"date","kind":"scalar","type":"DateTime"},{"name":"note","kind":"scalar","type":"String"},{"name":"categoryId","kind":"scalar","type":"String"},{"name":"category","kind":"object","type":"Category","relationName":"CategoryToTransaction"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"TransactionToUser"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"transactions"},"Budget":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"amount","kind":"scalar","type":"Decimal"},{"name":"month","kind":"scalar","type":"Int"},{"name":"year","kind":"scalar","type":"Int"},{"name":"categoryId","kind":"scalar","type":"String"},{"name":"category","kind":"object","type":"Category","relationName":"BudgetToCategory"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"BudgetToUser"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"budgets"},"FinancialSummary":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"month","kind":"scalar","type":"Int"},{"name":"year","kind":"scalar","type":"Int"},{"name":"totalIncome","kind":"scalar","type":"Decimal"},{"name":"totalExpense","kind":"scalar","type":"Decimal"},{"name":"totalBudget","kind":"scalar","type":"Decimal"},{"name":"balance","kind":"scalar","type":"Decimal"},{"name":"savings","kind":"scalar","type":"Decimal"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"FinancialSummaryToUser"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"financial_summaries"}},"enums":{},"types":{}}');
+    config2.runtimeDataModel = JSON.parse('{"models":{"User":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"username","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"password","kind":"scalar","type":"String"},{"name":"whatsapp","kind":"scalar","type":"String"},{"name":"provider","kind":"enum","type":"AuthProvider"},{"name":"providerId","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"categories","kind":"object","type":"Category","relationName":"CategoryToUser"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"TransactionToUser"},{"name":"budgets","kind":"object","type":"Budget","relationName":"BudgetToUser"},{"name":"financialSummaries","kind":"object","type":"FinancialSummary","relationName":"FinancialSummaryToUser"}],"dbName":"users"},"Category":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"type","kind":"enum","type":"TransactionType"},{"name":"icon","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"CategoryToUser"},{"name":"isActive","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"transactions","kind":"object","type":"Transaction","relationName":"CategoryToTransaction"},{"name":"budgets","kind":"object","type":"Budget","relationName":"BudgetToCategory"}],"dbName":"categories"},"Transaction":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"amount","kind":"scalar","type":"Decimal"},{"name":"type","kind":"enum","type":"TransactionType"},{"name":"date","kind":"scalar","type":"DateTime"},{"name":"note","kind":"scalar","type":"String"},{"name":"categoryId","kind":"scalar","type":"String"},{"name":"category","kind":"object","type":"Category","relationName":"CategoryToTransaction"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"TransactionToUser"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"transactions"},"Budget":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"amount","kind":"scalar","type":"Decimal"},{"name":"month","kind":"scalar","type":"Int"},{"name":"year","kind":"scalar","type":"Int"},{"name":"categoryId","kind":"scalar","type":"String"},{"name":"category","kind":"object","type":"Category","relationName":"BudgetToCategory"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"BudgetToUser"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"budgets"},"FinancialSummary":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"month","kind":"scalar","type":"Int"},{"name":"year","kind":"scalar","type":"Int"},{"name":"totalIncome","kind":"scalar","type":"Decimal"},{"name":"totalExpense","kind":"scalar","type":"Decimal"},{"name":"totalBudget","kind":"scalar","type":"Decimal"},{"name":"balance","kind":"scalar","type":"Decimal"},{"name":"savings","kind":"scalar","type":"Decimal"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"FinancialSummaryToUser"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"financial_summaries"}},"enums":{},"types":{}}');
     defineDmmfProperty2(exports2.Prisma, config2.runtimeDataModel);
     config2.parameterizationSchema = {
-      strings: JSON.parse('["where","orderBy","cursor","user","category","transactions","budgets","_count","categories","financialSummaries","User.findUnique","User.findUniqueOrThrow","User.findFirst","User.findFirstOrThrow","User.findMany","data","User.createOne","User.createMany","User.createManyAndReturn","User.updateOne","User.updateMany","User.updateManyAndReturn","create","update","User.upsertOne","User.deleteOne","User.deleteMany","having","_min","_max","User.groupBy","User.aggregate","Category.findUnique","Category.findUniqueOrThrow","Category.findFirst","Category.findFirstOrThrow","Category.findMany","Category.createOne","Category.createMany","Category.createManyAndReturn","Category.updateOne","Category.updateMany","Category.updateManyAndReturn","Category.upsertOne","Category.deleteOne","Category.deleteMany","Category.groupBy","Category.aggregate","Transaction.findUnique","Transaction.findUniqueOrThrow","Transaction.findFirst","Transaction.findFirstOrThrow","Transaction.findMany","Transaction.createOne","Transaction.createMany","Transaction.createManyAndReturn","Transaction.updateOne","Transaction.updateMany","Transaction.updateManyAndReturn","Transaction.upsertOne","Transaction.deleteOne","Transaction.deleteMany","_avg","_sum","Transaction.groupBy","Transaction.aggregate","Budget.findUnique","Budget.findUniqueOrThrow","Budget.findFirst","Budget.findFirstOrThrow","Budget.findMany","Budget.createOne","Budget.createMany","Budget.createManyAndReturn","Budget.updateOne","Budget.updateMany","Budget.updateManyAndReturn","Budget.upsertOne","Budget.deleteOne","Budget.deleteMany","Budget.groupBy","Budget.aggregate","FinancialSummary.findUnique","FinancialSummary.findUniqueOrThrow","FinancialSummary.findFirst","FinancialSummary.findFirstOrThrow","FinancialSummary.findMany","FinancialSummary.createOne","FinancialSummary.createMany","FinancialSummary.createManyAndReturn","FinancialSummary.updateOne","FinancialSummary.updateMany","FinancialSummary.updateManyAndReturn","FinancialSummary.upsertOne","FinancialSummary.deleteOne","FinancialSummary.deleteMany","FinancialSummary.groupBy","FinancialSummary.aggregate","AND","OR","NOT","id","month","year","totalIncome","totalExpense","totalBudget","balance","savings","userId","createdAt","updatedAt","equals","in","notIn","lt","lte","gt","gte","not","contains","startsWith","endsWith","amount","categoryId","name","TransactionType","type","date","note","icon","isActive","username","email","password","AuthProvider","provider","providerId","every","some","none","userId_month_year","userId_categoryId_month_year","userId_name_type","is","isNot","connectOrCreate","upsert","createMany","set","disconnect","delete","connect","updateMany","deleteMany","increment","decrement","multiply","divide"]'),
-      graph: "4AIxUA8FAACvAQAgBgAAsAEAIAgAAK4BACAJAACxAQAgYgAAqQEAMGMAABwAEGQAAKkBADBlAQAAAAFuQACtAQAhb0AArQEAIYQBAQAAAAGFAQEAAAABhgEBAKsBACGIAQAArAGIASKJAQEAqwEAIQEAAAABACAOAwAAtgEAIAUAAK8BACAGAACwAQAgYgAAvQEAMGMAAAMAEGQAAL0BADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhfQEAqgEAIX8AALsBfyKCAQEAqgEAIYMBIAC-AQAhAwMAALsCACAFAAC4AgAgBgAAuQIAIA8DAAC2AQAgBQAArwEAIAYAALABACBiAAC9AQAwYwAAAwAQZAAAvQEAMGUBAAAAAW0BAKoBACFuQACtAQAhb0AArQEAIX0BAKoBACF_AAC7AX8iggEBAKoBACGDASAAvgEAIY8BAAC8AQAgAwAAAAMAIAEAAAQAMAIAAAUAIA8DAAC2AQAgBAAAuQEAIGIAALoBADBjAAAHABBkAAC6AQAwZQEAqgEAIW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhfQEAqgEAIX8AALsBfyKAAUAArQEAIYEBAQCrAQAhAwMAALsCACAEAAC8AgAggQEAANMBACAPAwAAtgEAIAQAALkBACBiAAC6AQAwYwAABwAQZAAAugEAMGUBAAAAAW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhfQEAqgEAIX8AALsBfyKAAUAArQEAIYEBAQCrAQAhAwAAAAcAIAEAAAgAMAIAAAkAIA0DAAC2AQAgBAAAuQEAIGIAALgBADBjAAALABBkAAC4AQAwZQEAqgEAIWYCALQBACFnAgC0AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACECAwAAuwIAIAQAALwCACAOAwAAtgEAIAQAALkBACBiAAC4AQAwYwAACwAQZAAAuAEAMGUBAAAAAWYCALQBACFnAgC0AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACGOAQAAtwEAIAMAAAALACABAAAMADACAAANACABAAAABwAgAQAAAAsAIAMAAAAHACABAAAIADACAAAJACADAAAACwAgAQAADAAwAgAADQAgDwMAALYBACBiAACzAQAwYwAAEwAQZAAAswEAMGUBAKoBACFmAgC0AQAhZwIAtAEAIWgQALUBACFpEAC1AQAhahAAtQEAIWsQALUBACFsEAC1AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhAQMAALsCACAQAwAAtgEAIGIAALMBADBjAAATABBkAACzAQAwZQEAAAABZgIAtAEAIWcCALQBACFoEAC1AQAhaRAAtQEAIWoQALUBACFrEAC1AQAhbBAAtQEAIW0BAKoBACFuQACtAQAhb0AArQEAIY0BAACyAQAgAwAAABMAIAEAABQAMAIAABUAIAEAAAADACABAAAABwAgAQAAAAsAIAEAAAATACABAAAAAQAgDwUAAK8BACAGAACwAQAgCAAArgEAIAkAALEBACBiAACpAQAwYwAAHAAQZAAAqQEAMGUBAKoBACFuQACtAQAhb0AArQEAIYQBAQCqAQAhhQEBAKoBACGGAQEAqwEAIYgBAACsAYgBIokBAQCrAQAhBgUAALgCACAGAAC5AgAgCAAAtwIAIAkAALoCACCGAQAA0wEAIIkBAADTAQAgAwAAABwAIAEAAB0AMAIAAAEAIAMAAAAcACABAAAdADACAAABACADAAAAHAAgAQAAHQAwAgAAAQAgDAUAALQCACAGAAC1AgAgCAAAswIAIAkAALYCACBlAQAAAAFuQAAAAAFvQAAAAAGEAQEAAAABhQEBAAAAAYYBAQAAAAGIAQAAAIgBAokBAQAAAAEBDwAAIQAgCGUBAAAAAW5AAAAAAW9AAAAAAYQBAQAAAAGFAQEAAAABhgEBAAAAAYgBAAAAiAECiQEBAAAAAQEPAAAjADABDwAAIwAwDAUAAIYCACAGAACHAgAgCAAAhQIAIAkAAIgCACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGIAQAAhAKIASKJAQEA2gEAIQIAAAABACAPAAAmACAIZQEAxAEAIW5AAMcBACFvQADHAQAhhAEBAMQBACGFAQEAxAEAIYYBAQDaAQAhiAEAAIQCiAEiiQEBANoBACECAAAAHAAgDwAAKAAgAgAAABwAIA8AACgAIAMAAAABACAWAAAhACAXAAAmACABAAAAAQAgAQAAABwAIAUHAACBAgAgHAAAgwIAIB0AAIICACCGAQAA0wEAIIkBAADTAQAgC2IAAKUBADBjAAAvABBkAAClAQAwZQEAiwEAIW5AAI4BACFvQACOAQAhhAEBAIsBACGFAQEAiwEAIYYBAQCbAQAhiAEAAKYBiAEiiQEBAJsBACEDAAAAHAAgAQAALgAwGwAALwAgAwAAABwAIAEAAB0AMAIAAAEAIAEAAAAFACABAAAABQAgAwAAAAMAIAEAAAQAMAIAAAUAIAMAAAADACABAAAEADACAAAFACADAAAAAwAgAQAABAAwAgAABQAgCwMAAP4BACAFAAD_AQAgBgAAgAIAIGUBAAAAAW0BAAAAAW5AAAAAAW9AAAAAAX0BAAAAAX8AAAB_AoIBAQAAAAGDASAAAAABAQ8AADcAIAhlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQEPAAA5ADABDwAAOQAwCwMAAOMBACAFAADkAQAgBgAA5QEAIGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACECAAAABQAgDwAAPAAgCGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACECAAAAAwAgDwAAPgAgAgAAAAMAIA8AAD4AIAMAAAAFACAWAAA3ACAXAAA8ACABAAAABQAgAQAAAAMAIAMHAADfAQAgHAAA4QEAIB0AAOABACALYgAAoQEAMGMAAEUAEGQAAKEBADBlAQCLAQAhbQEAiwEAIW5AAI4BACFvQACOAQAhfQEAiwEAIX8AAJoBfyKCAQEAiwEAIYMBIACiAQAhAwAAAAMAIAEAAEQAMBsAAEUAIAMAAAADACABAAAEADACAAAFACABAAAACQAgAQAAAAkAIAMAAAAHACABAAAIADACAAAJACADAAAABwAgAQAACAAwAgAACQAgAwAAAAcAIAEAAAgAMAIAAAkAIAwDAADeAQAgBAAA3QEAIGUBAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAXwBAAAAAX0BAAAAAX8AAAB_AoABQAAAAAGBAQEAAAABAQ8AAE0AIAplAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQEPAABPADABDwAATwAwDAMAANwBACAEAADbAQAgZQEAxAEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhfQEAxAEAIX8AANkBfyKAAUAAxwEAIYEBAQDaAQAhAgAAAAkAIA8AAFIAIAplAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIXwBAMQBACF9AQDEAQAhfwAA2QF_IoABQADHAQAhgQEBANoBACECAAAABwAgDwAAVAAgAgAAAAcAIA8AAFQAIAMAAAAJACAWAABNACAXAABSACABAAAACQAgAQAAAAcAIAYHAADUAQAgHAAA1wEAIB0AANYBACA-AADVAQAgPwAA2AEAIIEBAADTAQAgDWIAAJkBADBjAABbABBkAACZAQAwZQEAiwEAIW0BAIsBACFuQACOAQAhb0AAjgEAIXsQAI0BACF8AQCLAQAhfQEAiwEAIX8AAJoBfyKAAUAAjgEAIYEBAQCbAQAhAwAAAAcAIAEAAFoAMBsAAFsAIAMAAAAHACABAAAIADACAAAJACABAAAADQAgAQAAAA0AIAMAAAALACABAAAMADACAAANACADAAAACwAgAQAADAAwAgAADQAgAwAAAAsAIAEAAAwAMAIAAA0AIAoDAADSAQAgBAAA0QEAIGUBAAAAAWYCAAAAAWcCAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAXwBAAAAAQEPAABjACAIZQEAAAABZgIAAAABZwIAAAABbQEAAAABbkAAAAABb0AAAAABexAAAAABfAEAAAABAQ8AAGUAMAEPAABlADAKAwAA0AEAIAQAAM8BACBlAQDEAQAhZgIAxQEAIWcCAMUBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF7EADGAQAhfAEAxAEAIQIAAAANACAPAABoACAIZQEAxAEAIWYCAMUBACFnAgDFAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIXwBAMQBACECAAAACwAgDwAAagAgAgAAAAsAIA8AAGoAIAMAAAANACAWAABjACAXAABoACABAAAADQAgAQAAAAsAIAUHAADKAQAgHAAAzQEAIB0AAMwBACA-AADLAQAgPwAAzgEAIAtiAACYAQAwYwAAcQAQZAAAmAEAMGUBAIsBACFmAgCMAQAhZwIAjAEAIW0BAIsBACFuQACOAQAhb0AAjgEAIXsQAI0BACF8AQCLAQAhAwAAAAsAIAEAAHAAMBsAAHEAIAMAAAALACABAAAMADACAAANACABAAAAFQAgAQAAABUAIAMAAAATACABAAAUADACAAAVACADAAAAEwAgAQAAFAAwAgAAFQAgAwAAABMAIAEAABQAMAIAABUAIAwDAADJAQAgZQEAAAABZgIAAAABZwIAAAABaBAAAAABaRAAAAABahAAAAABaxAAAAABbBAAAAABbQEAAAABbkAAAAABb0AAAAABAQ8AAHkAIAtlAQAAAAFmAgAAAAFnAgAAAAFoEAAAAAFpEAAAAAFqEAAAAAFrEAAAAAFsEAAAAAFtAQAAAAFuQAAAAAFvQAAAAAEBDwAAewAwAQ8AAHsAMAwDAADIAQAgZQEAxAEAIWYCAMUBACFnAgDFAQAhaBAAxgEAIWkQAMYBACFqEADGAQAhaxAAxgEAIWwQAMYBACFtAQDEAQAhbkAAxwEAIW9AAMcBACECAAAAFQAgDwAAfgAgC2UBAMQBACFmAgDFAQAhZwIAxQEAIWgQAMYBACFpEADGAQAhahAAxgEAIWsQAMYBACFsEADGAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhAgAAABMAIA8AAIABACACAAAAEwAgDwAAgAEAIAMAAAAVACAWAAB5ACAXAAB-ACABAAAAFQAgAQAAABMAIAUHAAC_AQAgHAAAwgEAIB0AAMEBACA-AADAAQAgPwAAwwEAIA5iAACKAQAwYwAAhwEAEGQAAIoBADBlAQCLAQAhZgIAjAEAIWcCAIwBACFoEACNAQAhaRAAjQEAIWoQAI0BACFrEACNAQAhbBAAjQEAIW0BAIsBACFuQACOAQAhb0AAjgEAIQMAAAATACABAACGAQAwGwAAhwEAIAMAAAATACABAAAUADACAAAVACAOYgAAigEAMGMAAIcBABBkAACKAQAwZQEAiwEAIWYCAIwBACFnAgCMAQAhaBAAjQEAIWkQAI0BACFqEACNAQAhaxAAjQEAIWwQAI0BACFtAQCLAQAhbkAAjgEAIW9AAI4BACEOBwAAkAEAIBwAAJcBACAdAACXAQAgcAEAAAABcQEAAAAEcgEAAAAEcwEAAAABdAEAAAABdQEAAAABdgEAAAABdwEAlgEAIXgBAAAAAXkBAAAAAXoBAAAAAQ0HAACQAQAgHAAAkAEAIB0AAJABACA-AACVAQAgPwAAkAEAIHACAAAAAXECAAAABHICAAAABHMCAAAAAXQCAAAAAXUCAAAAAXYCAAAAAXcCAJQBACENBwAAkAEAIBwAAJMBACAdAACTAQAgPgAAkwEAID8AAJMBACBwEAAAAAFxEAAAAARyEAAAAARzEAAAAAF0EAAAAAF1EAAAAAF2EAAAAAF3EACSAQAhCwcAAJABACAcAACRAQAgHQAAkQEAIHBAAAAAAXFAAAAABHJAAAAABHNAAAAAAXRAAAAAAXVAAAAAAXZAAAAAAXdAAI8BACELBwAAkAEAIBwAAJEBACAdAACRAQAgcEAAAAABcUAAAAAEckAAAAAEc0AAAAABdEAAAAABdUAAAAABdkAAAAABd0AAjwEAIQhwAgAAAAFxAgAAAARyAgAAAARzAgAAAAF0AgAAAAF1AgAAAAF2AgAAAAF3AgCQAQAhCHBAAAAAAXFAAAAABHJAAAAABHNAAAAAAXRAAAAAAXVAAAAAAXZAAAAAAXdAAJEBACENBwAAkAEAIBwAAJMBACAdAACTAQAgPgAAkwEAID8AAJMBACBwEAAAAAFxEAAAAARyEAAAAARzEAAAAAF0EAAAAAF1EAAAAAF2EAAAAAF3EACSAQAhCHAQAAAAAXEQAAAABHIQAAAABHMQAAAAAXQQAAAAAXUQAAAAAXYQAAAAAXcQAJMBACENBwAAkAEAIBwAAJABACAdAACQAQAgPgAAlQEAID8AAJABACBwAgAAAAFxAgAAAARyAgAAAARzAgAAAAF0AgAAAAF1AgAAAAF2AgAAAAF3AgCUAQAhCHAIAAAAAXEIAAAABHIIAAAABHMIAAAAAXQIAAAAAXUIAAAAAXYIAAAAAXcIAJUBACEOBwAAkAEAIBwAAJcBACAdAACXAQAgcAEAAAABcQEAAAAEcgEAAAAEcwEAAAABdAEAAAABdQEAAAABdgEAAAABdwEAlgEAIXgBAAAAAXkBAAAAAXoBAAAAAQtwAQAAAAFxAQAAAARyAQAAAARzAQAAAAF0AQAAAAF1AQAAAAF2AQAAAAF3AQCXAQAheAEAAAABeQEAAAABegEAAAABC2IAAJgBADBjAABxABBkAACYAQAwZQEAiwEAIWYCAIwBACFnAgCMAQAhbQEAiwEAIW5AAI4BACFvQACOAQAhexAAjQEAIXwBAIsBACENYgAAmQEAMGMAAFsAEGQAAJkBADBlAQCLAQAhbQEAiwEAIW5AAI4BACFvQACOAQAhexAAjQEAIXwBAIsBACF9AQCLAQAhfwAAmgF_IoABQACOAQAhgQEBAJsBACEHBwAAkAEAIBwAAKABACAdAACgAQAgcAAAAH8CcQAAAH8IcgAAAH8IdwAAnwF_Ig4HAACdAQAgHAAAngEAIB0AAJ4BACBwAQAAAAFxAQAAAAVyAQAAAAVzAQAAAAF0AQAAAAF1AQAAAAF2AQAAAAF3AQCcAQAheAEAAAABeQEAAAABegEAAAABDgcAAJ0BACAcAACeAQAgHQAAngEAIHABAAAAAXEBAAAABXIBAAAABXMBAAAAAXQBAAAAAXUBAAAAAXYBAAAAAXcBAJwBACF4AQAAAAF5AQAAAAF6AQAAAAEIcAIAAAABcQIAAAAFcgIAAAAFcwIAAAABdAIAAAABdQIAAAABdgIAAAABdwIAnQEAIQtwAQAAAAFxAQAAAAVyAQAAAAVzAQAAAAF0AQAAAAF1AQAAAAF2AQAAAAF3AQCeAQAheAEAAAABeQEAAAABegEAAAABBwcAAJABACAcAACgAQAgHQAAoAEAIHAAAAB_AnEAAAB_CHIAAAB_CHcAAJ8BfyIEcAAAAH8CcQAAAH8IcgAAAH8IdwAAoAF_IgtiAAChAQAwYwAARQAQZAAAoQEAMGUBAIsBACFtAQCLAQAhbkAAjgEAIW9AAI4BACF9AQCLAQAhfwAAmgF_IoIBAQCLAQAhgwEgAKIBACEFBwAAkAEAIBwAAKQBACAdAACkAQAgcCAAAAABdyAAowEAIQUHAACQAQAgHAAApAEAIB0AAKQBACBwIAAAAAF3IACjAQAhAnAgAAAAAXcgAKQBACELYgAApQEAMGMAAC8AEGQAAKUBADBlAQCLAQAhbkAAjgEAIW9AAI4BACGEAQEAiwEAIYUBAQCLAQAhhgEBAJsBACGIAQAApgGIASKJAQEAmwEAIQcHAACQAQAgHAAAqAEAIB0AAKgBACBwAAAAiAECcQAAAIgBCHIAAACIAQh3AACnAYgBIgcHAACQAQAgHAAAqAEAIB0AAKgBACBwAAAAiAECcQAAAIgBCHIAAACIAQh3AACnAYgBIgRwAAAAiAECcQAAAIgBCHIAAACIAQh3AACoAYgBIg8FAACvAQAgBgAAsAEAIAgAAK4BACAJAACxAQAgYgAAqQEAMGMAABwAEGQAAKkBADBlAQCqAQAhbkAArQEAIW9AAK0BACGEAQEAqgEAIYUBAQCqAQAhhgEBAKsBACGIAQAArAGIASKJAQEAqwEAIQtwAQAAAAFxAQAAAARyAQAAAARzAQAAAAF0AQAAAAF1AQAAAAF2AQAAAAF3AQCXAQAheAEAAAABeQEAAAABegEAAAABC3ABAAAAAXEBAAAABXIBAAAABXMBAAAAAXQBAAAAAXUBAAAAAXYBAAAAAXcBAJ4BACF4AQAAAAF5AQAAAAF6AQAAAAEEcAAAAIgBAnEAAACIAQhyAAAAiAEIdwAAqAGIASIIcEAAAAABcUAAAAAEckAAAAAEc0AAAAABdEAAAAABdUAAAAABdkAAAAABd0AAkQEAIQOKAQAAAwAgiwEAAAMAIIwBAAADACADigEAAAcAIIsBAAAHACCMAQAABwAgA4oBAAALACCLAQAACwAgjAEAAAsAIAOKAQAAEwAgiwEAABMAIIwBAAATACADZgIAAAABZwIAAAABbQEAAAABDwMAALYBACBiAACzAQAwYwAAEwAQZAAAswEAMGUBAKoBACFmAgC0AQAhZwIAtAEAIWgQALUBACFpEAC1AQAhahAAtQEAIWsQALUBACFsEAC1AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhCHACAAAAAXECAAAABHICAAAABHMCAAAAAXQCAAAAAXUCAAAAAXYCAAAAAXcCAJABACEIcBAAAAABcRAAAAAEchAAAAAEcxAAAAABdBAAAAABdRAAAAABdhAAAAABdxAAkwEAIREFAACvAQAgBgAAsAEAIAgAAK4BACAJAACxAQAgYgAAqQEAMGMAABwAEGQAAKkBADBlAQCqAQAhbkAArQEAIW9AAK0BACGEAQEAqgEAIYUBAQCqAQAhhgEBAKsBACGIAQAArAGIASKJAQEAqwEAIZABAAAcACCRAQAAHAAgBGYCAAAAAWcCAAAAAW0BAAAAAXwBAAAAAQ0DAAC2AQAgBAAAuQEAIGIAALgBADBjAAALABBkAAC4AQAwZQEAqgEAIWYCALQBACFnAgC0AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACEQAwAAtgEAIAUAAK8BACAGAACwAQAgYgAAvQEAMGMAAAMAEGQAAL0BADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhfQEAqgEAIX8AALsBfyKCAQEAqgEAIYMBIAC-AQAhkAEAAAMAIJEBAAADACAPAwAAtgEAIAQAALkBACBiAAC6AQAwYwAABwAQZAAAugEAMGUBAKoBACFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIX0BAKoBACF_AAC7AX8igAFAAK0BACGBAQEAqwEAIQRwAAAAfwJxAAAAfwhyAAAAfwh3AACgAX8iA20BAAAAAX0BAAAAAX8AAAB_Ag4DAAC2AQAgBQAArwEAIAYAALABACBiAAC9AQAwYwAAAwAQZAAAvQEAMGUBAKoBACFtAQCqAQAhbkAArQEAIW9AAK0BACF9AQCqAQAhfwAAuwF_IoIBAQCqAQAhgwEgAL4BACECcCAAAAABdyAApAEAIQAAAAAAAZUBAQAAAAEFlQECAAAAAZsBAgAAAAGcAQIAAAABnQECAAAAAZ4BAgAAAAEFlQEQAAAAAZsBEAAAAAGcARAAAAABnQEQAAAAAZ4BEAAAAAEBlQFAAAAAAQUWAADcAgAgFwAA3wIAIJIBAADdAgAgkwEAAN4CACCYAQAAAQAgAxYAANwCACCSAQAA3QIAIJgBAAABACAAAAAAAAUWAADUAgAgFwAA2gIAIJIBAADVAgAgkwEAANkCACCYAQAABQAgBRYAANICACAXAADXAgAgkgEAANMCACCTAQAA1gIAIJgBAAABACADFgAA1AIAIJIBAADVAgAgmAEAAAUAIAMWAADSAgAgkgEAANMCACCYAQAAAQAgAAAAAAAAAZUBAAAAfwIBlQEBAAAAAQUWAADKAgAgFwAA0AIAIJIBAADLAgAgkwEAAM8CACCYAQAABQAgBRYAAMgCACAXAADNAgAgkgEAAMkCACCTAQAAzAIAIJgBAAABACADFgAAygIAIJIBAADLAgAgmAEAAAUAIAMWAADIAgAgkgEAAMkCACCYAQAAAQAgAAAAAZUBIAAAAAEFFgAAwQIAIBcAAMYCACCSAQAAwgIAIJMBAADFAgAgmAEAAAEAIAsWAADyAQAwFwAA9wEAMJIBAADzAQAwkwEAAPQBADCUAQAA9QEAIJUBAAD2AQAwlgEAAPYBADCXAQAA9gEAMJgBAAD2AQAwmQEAAPgBADCaAQAA-QEAMAsWAADmAQAwFwAA6wEAMJIBAADnAQAwkwEAAOgBADCUAQAA6QEAIJUBAADqAQAwlgEAAOoBADCXAQAA6gEAMJgBAADqAQAwmQEAAOwBADCaAQAA7QEAMAgDAADSAQAgZQEAAAABZgIAAAABZwIAAAABbQEAAAABbkAAAAABb0AAAAABexAAAAABAgAAAA0AIBYAAPEBACADAAAADQAgFgAA8QEAIBcAAPABACABDwAAxAIAMA4DAAC2AQAgBAAAuQEAIGIAALgBADBjAAALABBkAAC4AQAwZQEAAAABZgIAtAEAIWcCALQBACFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIY4BAAC3AQAgAgAAAA0AIA8AAPABACACAAAA7gEAIA8AAO8BACALYgAA7QEAMGMAAO4BABBkAADtAQAwZQEAqgEAIWYCALQBACFnAgC0AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACELYgAA7QEAMGMAAO4BABBkAADtAQAwZQEAqgEAIWYCALQBACFnAgC0AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACEHZQEAxAEAIWYCAMUBACFnAgDFAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIQgDAADQAQAgZQEAxAEAIWYCAMUBACFnAgDFAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIQgDAADSAQAgZQEAAAABZgIAAAABZwIAAAABbQEAAAABbkAAAAABb0AAAAABexAAAAABCgMAAN4BACBlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQIAAAAJACAWAAD9AQAgAwAAAAkAIBYAAP0BACAXAAD8AQAgAQ8AAMMCADAPAwAAtgEAIAQAALkBACBiAAC6AQAwYwAABwAQZAAAugEAMGUBAAAAAW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhfQEAqgEAIX8AALsBfyKAAUAArQEAIYEBAQCrAQAhAgAAAAkAIA8AAPwBACACAAAA-gEAIA8AAPsBACANYgAA-QEAMGMAAPoBABBkAAD5AQAwZQEAqgEAIW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhfQEAqgEAIX8AALsBfyKAAUAArQEAIYEBAQCrAQAhDWIAAPkBADBjAAD6AQAQZAAA-QEAMGUBAKoBACFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIX0BAKoBACF_AAC7AX8igAFAAK0BACGBAQEAqwEAIQllAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIX0BAMQBACF_AADZAX8igAFAAMcBACGBAQEA2gEAIQoDAADcAQAgZQEAxAEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF9AQDEAQAhfwAA2QF_IoABQADHAQAhgQEBANoBACEKAwAA3gEAIGUBAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAX0BAAAAAX8AAAB_AoABQAAAAAGBAQEAAAABAxYAAMECACCSAQAAwgIAIJgBAAABACAEFgAA8gEAMJIBAADzAQAwlAEAAPUBACCYAQAA9gEAMAQWAADmAQAwkgEAAOcBADCUAQAA6QEAIJgBAADqAQAwAAAAAZUBAAAAiAECCxYAAKcCADAXAACsAgAwkgEAAKgCADCTAQAAqQIAMJQBAACqAgAglQEAAKsCADCWAQAAqwIAMJcBAACrAgAwmAEAAKsCADCZAQAArQIAMJoBAACuAgAwCxYAAJ4CADAXAACiAgAwkgEAAJ8CADCTAQAAoAIAMJQBAAChAgAglQEAAPYBADCWAQAA9gEAMJcBAAD2AQAwmAEAAPYBADCZAQAAowIAMJoBAAD5AQAwCxYAAJUCADAXAACZAgAwkgEAAJYCADCTAQAAlwIAMJQBAACYAgAglQEAAOoBADCWAQAA6gEAMJcBAADqAQAwmAEAAOoBADCZAQAAmgIAMJoBAADtAQAwCxYAAIkCADAXAACOAgAwkgEAAIoCADCTAQAAiwIAMJQBAACMAgAglQEAAI0CADCWAQAAjQIAMJcBAACNAgAwmAEAAI0CADCZAQAAjwIAMJoBAACQAgAwCmUBAAAAAWYCAAAAAWcCAAAAAWgQAAAAAWkQAAAAAWoQAAAAAWsQAAAAAWwQAAAAAW5AAAAAAW9AAAAAAQIAAAAVACAWAACUAgAgAwAAABUAIBYAAJQCACAXAACTAgAgAQ8AAMACADAQAwAAtgEAIGIAALMBADBjAAATABBkAACzAQAwZQEAAAABZgIAtAEAIWcCALQBACFoEAC1AQAhaRAAtQEAIWoQALUBACFrEAC1AQAhbBAAtQEAIW0BAKoBACFuQACtAQAhb0AArQEAIY0BAACyAQAgAgAAABUAIA8AAJMCACACAAAAkQIAIA8AAJICACAOYgAAkAIAMGMAAJECABBkAACQAgAwZQEAqgEAIWYCALQBACFnAgC0AQAhaBAAtQEAIWkQALUBACFqEAC1AQAhaxAAtQEAIWwQALUBACFtAQCqAQAhbkAArQEAIW9AAK0BACEOYgAAkAIAMGMAAJECABBkAACQAgAwZQEAqgEAIWYCALQBACFnAgC0AQAhaBAAtQEAIWkQALUBACFqEAC1AQAhaxAAtQEAIWwQALUBACFtAQCqAQAhbkAArQEAIW9AAK0BACEKZQEAxAEAIWYCAMUBACFnAgDFAQAhaBAAxgEAIWkQAMYBACFqEADGAQAhaxAAxgEAIWwQAMYBACFuQADHAQAhb0AAxwEAIQplAQDEAQAhZgIAxQEAIWcCAMUBACFoEADGAQAhaRAAxgEAIWoQAMYBACFrEADGAQAhbBAAxgEAIW5AAMcBACFvQADHAQAhCmUBAAAAAWYCAAAAAWcCAAAAAWgQAAAAAWkQAAAAAWoQAAAAAWsQAAAAAWwQAAAAAW5AAAAAAW9AAAAAAQgEAADRAQAgZQEAAAABZgIAAAABZwIAAAABbkAAAAABb0AAAAABexAAAAABfAEAAAABAgAAAA0AIBYAAJ0CACADAAAADQAgFgAAnQIAIBcAAJwCACABDwAAvwIAMAIAAAANACAPAACcAgAgAgAAAO4BACAPAACbAgAgB2UBAMQBACFmAgDFAQAhZwIAxQEAIW5AAMcBACFvQADHAQAhexAAxgEAIXwBAMQBACEIBAAAzwEAIGUBAMQBACFmAgDFAQAhZwIAxQEAIW5AAMcBACFvQADHAQAhexAAxgEAIXwBAMQBACEIBAAA0QEAIGUBAAAAAWYCAAAAAWcCAAAAAW5AAAAAAW9AAAAAAXsQAAAAAXwBAAAAAQoEAADdAQAgZQEAAAABbkAAAAABb0AAAAABexAAAAABfAEAAAABfQEAAAABfwAAAH8CgAFAAAAAAYEBAQAAAAECAAAACQAgFgAApgIAIAMAAAAJACAWAACmAgAgFwAApQIAIAEPAAC-AgAwAgAAAAkAIA8AAKUCACACAAAA-gEAIA8AAKQCACAJZQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIXwBAMQBACF9AQDEAQAhfwAA2QF_IoABQADHAQAhgQEBANoBACEKBAAA2wEAIGUBAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhfQEAxAEAIX8AANkBfyKAAUAAxwEAIYEBAQDaAQAhCgQAAN0BACBlAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQkFAAD_AQAgBgAAgAIAIGUBAAAAAW5AAAAAAW9AAAAAAX0BAAAAAX8AAAB_AoIBAQAAAAGDASAAAAABAgAAAAUAIBYAALICACADAAAABQAgFgAAsgIAIBcAALECACABDwAAvQIAMA8DAAC2AQAgBQAArwEAIAYAALABACBiAAC9AQAwYwAAAwAQZAAAvQEAMGUBAAAAAW0BAKoBACFuQACtAQAhb0AArQEAIX0BAKoBACF_AAC7AX8iggEBAKoBACGDASAAvgEAIY8BAAC8AQAgAgAAAAUAIA8AALECACACAAAArwIAIA8AALACACALYgAArgIAMGMAAK8CABBkAACuAgAwZQEAqgEAIW0BAKoBACFuQACtAQAhb0AArQEAIX0BAKoBACF_AAC7AX8iggEBAKoBACGDASAAvgEAIQtiAACuAgAwYwAArwIAEGQAAK4CADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhfQEAqgEAIX8AALsBfyKCAQEAqgEAIYMBIAC-AQAhB2UBAMQBACFuQADHAQAhb0AAxwEAIX0BAMQBACF_AADZAX8iggEBAMQBACGDASAA4gEAIQkFAADkAQAgBgAA5QEAIGUBAMQBACFuQADHAQAhb0AAxwEAIX0BAMQBACF_AADZAX8iggEBAMQBACGDASAA4gEAIQkFAAD_AQAgBgAAgAIAIGUBAAAAAW5AAAAAAW9AAAAAAX0BAAAAAX8AAAB_AoIBAQAAAAGDASAAAAABBBYAAKcCADCSAQAAqAIAMJQBAACqAgAgmAEAAKsCADAEFgAAngIAMJIBAACfAgAwlAEAAKECACCYAQAA9gEAMAQWAACVAgAwkgEAAJYCADCUAQAAmAIAIJgBAADqAQAwBBYAAIkCADCSAQAAigIAMJQBAACMAgAgmAEAAI0CADAAAAAABgUAALgCACAGAAC5AgAgCAAAtwIAIAkAALoCACCGAQAA0wEAIIkBAADTAQAgAwMAALsCACAFAAC4AgAgBgAAuQIAIAdlAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQllAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQdlAQAAAAFmAgAAAAFnAgAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAEKZQEAAAABZgIAAAABZwIAAAABaBAAAAABaRAAAAABahAAAAABaxAAAAABbBAAAAABbkAAAAABb0AAAAABCwUAALQCACAGAAC1AgAgCQAAtgIAIGUBAAAAAW5AAAAAAW9AAAAAAYQBAQAAAAGFAQEAAAABhgEBAAAAAYgBAAAAiAECiQEBAAAAAQIAAAABACAWAADBAgAgCWUBAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAX0BAAAAAX8AAAB_AoABQAAAAAGBAQEAAAABB2UBAAAAAWYCAAAAAWcCAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAQMAAAAcACAWAADBAgAgFwAAxwIAIA0AAAAcACAFAACGAgAgBgAAhwIAIAkAAIgCACAPAADHAgAgZQEAxAEAIW5AAMcBACFvQADHAQAhhAEBAMQBACGFAQEAxAEAIYYBAQDaAQAhiAEAAIQCiAEiiQEBANoBACELBQAAhgIAIAYAAIcCACAJAACIAgAgZQEAxAEAIW5AAMcBACFvQADHAQAhhAEBAMQBACGFAQEAxAEAIYYBAQDaAQAhiAEAAIQCiAEiiQEBANoBACELBgAAtQIAIAgAALMCACAJAAC2AgAgZQEAAAABbkAAAAABb0AAAAABhAEBAAAAAYUBAQAAAAGGAQEAAAABiAEAAACIAQKJAQEAAAABAgAAAAEAIBYAAMgCACAKAwAA_gEAIAYAAIACACBlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQIAAAAFACAWAADKAgAgAwAAABwAIBYAAMgCACAXAADOAgAgDQAAABwAIAYAAIcCACAIAACFAgAgCQAAiAIAIA8AAM4CACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGIAQAAhAKIASKJAQEA2gEAIQsGAACHAgAgCAAAhQIAIAkAAIgCACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGIAQAAhAKIASKJAQEA2gEAIQMAAAADACAWAADKAgAgFwAA0QIAIAwAAAADACADAADjAQAgBgAA5QEAIA8AANECACBlAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhfQEAxAEAIX8AANkBfyKCAQEAxAEAIYMBIADiAQAhCgMAAOMBACAGAADlAQAgZQEAxAEAIW0BAMQBACFuQADHAQAhb0AAxwEAIX0BAMQBACF_AADZAX8iggEBAMQBACGDASAA4gEAIQsFAAC0AgAgCAAAswIAIAkAALYCACBlAQAAAAFuQAAAAAFvQAAAAAGEAQEAAAABhQEBAAAAAYYBAQAAAAGIAQAAAIgBAokBAQAAAAECAAAAAQAgFgAA0gIAIAoDAAD-AQAgBQAA_wEAIGUBAAAAAW0BAAAAAW5AAAAAAW9AAAAAAX0BAAAAAX8AAAB_AoIBAQAAAAGDASAAAAABAgAAAAUAIBYAANQCACADAAAAHAAgFgAA0gIAIBcAANgCACANAAAAHAAgBQAAhgIAIAgAAIUCACAJAACIAgAgDwAA2AIAIGUBAMQBACFuQADHAQAhb0AAxwEAIYQBAQDEAQAhhQEBAMQBACGGAQEA2gEAIYgBAACEAogBIokBAQDaAQAhCwUAAIYCACAIAACFAgAgCQAAiAIAIGUBAMQBACFuQADHAQAhb0AAxwEAIYQBAQDEAQAhhQEBAMQBACGGAQEA2gEAIYgBAACEAogBIokBAQDaAQAhAwAAAAMAIBYAANQCACAXAADbAgAgDAAAAAMAIAMAAOMBACAFAADkAQAgDwAA2wIAIGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACEKAwAA4wEAIAUAAOQBACBlAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhfQEAxAEAIX8AANkBfyKCAQEAxAEAIYMBIADiAQAhCwUAALQCACAGAAC1AgAgCAAAswIAIGUBAAAAAW5AAAAAAW9AAAAAAYQBAQAAAAGFAQEAAAABhgEBAAAAAYgBAAAAiAECiQEBAAAAAQIAAAABACAWAADcAgAgAwAAABwAIBYAANwCACAXAADgAgAgDQAAABwAIAUAAIYCACAGAACHAgAgCAAAhQIAIA8AAOACACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGIAQAAhAKIASKJAQEA2gEAIQsFAACGAgAgBgAAhwIAIAgAAIUCACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGIAQAAhAKIASKJAQEA2gEAIQUFEQMGEgQHAAcIBgIJFgYEAwABBQoDBg4EBwAFAgMAAQQAAgIDAAEEAAICBQ8ABhAAAQMAAQQFGAAGGQAIFwAJGgAAAAADBwAMHAANHQAOAAAAAwcADBwADR0ADgEDAAEBAwABAwcAExwAFB0AFQAAAAMHABMcABQdABUCAwABBAACAgMAAQQAAgUHABocAB0dAB4-ABs_ABwAAAAAAAUHABocAB0dAB4-ABs_ABwCAwABBAACAgMAAQQAAgUHACMcACYdACc-ACQ_ACUAAAAAAAUHACMcACYdACc-ACQ_ACUBAwABAQMAAQUHACwcAC8dADA-AC0_AC4AAAAAAAUHACwcAC8dADA-AC0_AC4KAgELGwEMHgENHwEOIAEQIgERJAgSJQkTJwEUKQgVKgoYKwEZLAEaLQgeMAsfMQ8gMgIhMwIiNAIjNQIkNgIlOAImOggnOxAoPQIpPwgqQBErQQIsQgItQwguRhIvRxYwSAMxSQMySgMzSwM0TAM1TgM2UAg3URc4UwM5VQg6Vhg7VwM8WAM9WQhAXBlBXR9CXgRDXwREYARFYQRGYgRHZARIZghJZyBKaQRLawhMbCFNbQRObgRPbwhQciJRcyhSdAZTdQZUdgZVdwZWeAZXegZYfAhZfSlafwZbgQEIXIIBKl2DAQZehAEGX4UBCGCIASthiQEx"
+      strings: JSON.parse('["where","orderBy","cursor","user","category","transactions","budgets","_count","categories","financialSummaries","User.findUnique","User.findUniqueOrThrow","User.findFirst","User.findFirstOrThrow","User.findMany","data","User.createOne","User.createMany","User.createManyAndReturn","User.updateOne","User.updateMany","User.updateManyAndReturn","create","update","User.upsertOne","User.deleteOne","User.deleteMany","having","_min","_max","User.groupBy","User.aggregate","Category.findUnique","Category.findUniqueOrThrow","Category.findFirst","Category.findFirstOrThrow","Category.findMany","Category.createOne","Category.createMany","Category.createManyAndReturn","Category.updateOne","Category.updateMany","Category.updateManyAndReturn","Category.upsertOne","Category.deleteOne","Category.deleteMany","Category.groupBy","Category.aggregate","Transaction.findUnique","Transaction.findUniqueOrThrow","Transaction.findFirst","Transaction.findFirstOrThrow","Transaction.findMany","Transaction.createOne","Transaction.createMany","Transaction.createManyAndReturn","Transaction.updateOne","Transaction.updateMany","Transaction.updateManyAndReturn","Transaction.upsertOne","Transaction.deleteOne","Transaction.deleteMany","_avg","_sum","Transaction.groupBy","Transaction.aggregate","Budget.findUnique","Budget.findUniqueOrThrow","Budget.findFirst","Budget.findFirstOrThrow","Budget.findMany","Budget.createOne","Budget.createMany","Budget.createManyAndReturn","Budget.updateOne","Budget.updateMany","Budget.updateManyAndReturn","Budget.upsertOne","Budget.deleteOne","Budget.deleteMany","Budget.groupBy","Budget.aggregate","FinancialSummary.findUnique","FinancialSummary.findUniqueOrThrow","FinancialSummary.findFirst","FinancialSummary.findFirstOrThrow","FinancialSummary.findMany","FinancialSummary.createOne","FinancialSummary.createMany","FinancialSummary.createManyAndReturn","FinancialSummary.updateOne","FinancialSummary.updateMany","FinancialSummary.updateManyAndReturn","FinancialSummary.upsertOne","FinancialSummary.deleteOne","FinancialSummary.deleteMany","FinancialSummary.groupBy","FinancialSummary.aggregate","AND","OR","NOT","id","month","year","totalIncome","totalExpense","totalBudget","balance","savings","userId","createdAt","updatedAt","equals","in","notIn","lt","lte","gt","gte","not","contains","startsWith","endsWith","amount","categoryId","name","TransactionType","type","date","note","icon","isActive","username","email","password","whatsapp","AuthProvider","provider","providerId","every","some","none","userId_month_year","userId_categoryId_month_year","userId_name_type","is","isNot","connectOrCreate","upsert","createMany","set","disconnect","delete","connect","updateMany","deleteMany","increment","decrement","multiply","divide"]'),
+      graph: "4AIxUBAFAACvAQAgBgAAsAEAIAgAAK4BACAJAACxAQAgYgAAqQEAMGMAABwAEGQAAKkBADBlAQAAAAFuQACtAQAhb0AArQEAIYQBAQAAAAGFAQEAAAABhgEBAKsBACGHAQEAqwEAIYkBAACsAYkBIooBAQCrAQAhAQAAAAEAIA4DAAC2AQAgBQAArwEAIAYAALABACBiAAC9AQAwYwAAAwAQZAAAvQEAMGUBAKoBACFtAQCqAQAhbkAArQEAIW9AAK0BACF9AQCqAQAhfwAAuwF_IoIBAQCqAQAhgwEgAL4BACEDAwAAuwIAIAUAALgCACAGAAC5AgAgDwMAALYBACAFAACvAQAgBgAAsAEAIGIAAL0BADBjAAADABBkAAC9AQAwZQEAAAABbQEAqgEAIW5AAK0BACFvQACtAQAhfQEAqgEAIX8AALsBfyKCAQEAqgEAIYMBIAC-AQAhkAEAALwBACADAAAAAwAgAQAABAAwAgAABQAgDwMAALYBACAEAAC5AQAgYgAAugEAMGMAAAcAEGQAALoBADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACF9AQCqAQAhfwAAuwF_IoABQACtAQAhgQEBAKsBACEDAwAAuwIAIAQAALwCACCBAQAA0wEAIA8DAAC2AQAgBAAAuQEAIGIAALoBADBjAAAHABBkAAC6AQAwZQEAAAABbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACF9AQCqAQAhfwAAuwF_IoABQACtAQAhgQEBAKsBACEDAAAABwAgAQAACAAwAgAACQAgDQMAALYBACAEAAC5AQAgYgAAuAEAMGMAAAsAEGQAALgBADBlAQCqAQAhZgIAtAEAIWcCALQBACFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIQIDAAC7AgAgBAAAvAIAIA4DAAC2AQAgBAAAuQEAIGIAALgBADBjAAALABBkAAC4AQAwZQEAAAABZgIAtAEAIWcCALQBACFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIY8BAAC3AQAgAwAAAAsAIAEAAAwAMAIAAA0AIAEAAAAHACABAAAACwAgAwAAAAcAIAEAAAgAMAIAAAkAIAMAAAALACABAAAMADACAAANACAPAwAAtgEAIGIAALMBADBjAAATABBkAACzAQAwZQEAqgEAIWYCALQBACFnAgC0AQAhaBAAtQEAIWkQALUBACFqEAC1AQAhaxAAtQEAIWwQALUBACFtAQCqAQAhbkAArQEAIW9AAK0BACEBAwAAuwIAIBADAAC2AQAgYgAAswEAMGMAABMAEGQAALMBADBlAQAAAAFmAgC0AQAhZwIAtAEAIWgQALUBACFpEAC1AQAhahAAtQEAIWsQALUBACFsEAC1AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhjgEAALIBACADAAAAEwAgAQAAFAAwAgAAFQAgAQAAAAMAIAEAAAAHACABAAAACwAgAQAAABMAIAEAAAABACAQBQAArwEAIAYAALABACAIAACuAQAgCQAAsQEAIGIAAKkBADBjAAAcABBkAACpAQAwZQEAqgEAIW5AAK0BACFvQACtAQAhhAEBAKoBACGFAQEAqgEAIYYBAQCrAQAhhwEBAKsBACGJAQAArAGJASKKAQEAqwEAIQcFAAC4AgAgBgAAuQIAIAgAALcCACAJAAC6AgAghgEAANMBACCHAQAA0wEAIIoBAADTAQAgAwAAABwAIAEAAB0AMAIAAAEAIAMAAAAcACABAAAdADACAAABACADAAAAHAAgAQAAHQAwAgAAAQAgDQUAALQCACAGAAC1AgAgCAAAswIAIAkAALYCACBlAQAAAAFuQAAAAAFvQAAAAAGEAQEAAAABhQEBAAAAAYYBAQAAAAGHAQEAAAABiQEAAACJAQKKAQEAAAABAQ8AACEAIAllAQAAAAFuQAAAAAFvQAAAAAGEAQEAAAABhQEBAAAAAYYBAQAAAAGHAQEAAAABiQEAAACJAQKKAQEAAAABAQ8AACMAMAEPAAAjADANBQAAhgIAIAYAAIcCACAIAACFAgAgCQAAiAIAIGUBAMQBACFuQADHAQAhb0AAxwEAIYQBAQDEAQAhhQEBAMQBACGGAQEA2gEAIYcBAQDaAQAhiQEAAIQCiQEiigEBANoBACECAAAAAQAgDwAAJgAgCWUBAMQBACFuQADHAQAhb0AAxwEAIYQBAQDEAQAhhQEBAMQBACGGAQEA2gEAIYcBAQDaAQAhiQEAAIQCiQEiigEBANoBACECAAAAHAAgDwAAKAAgAgAAABwAIA8AACgAIAMAAAABACAWAAAhACAXAAAmACABAAAAAQAgAQAAABwAIAYHAACBAgAgHAAAgwIAIB0AAIICACCGAQAA0wEAIIcBAADTAQAgigEAANMBACAMYgAApQEAMGMAAC8AEGQAAKUBADBlAQCLAQAhbkAAjgEAIW9AAI4BACGEAQEAiwEAIYUBAQCLAQAhhgEBAJsBACGHAQEAmwEAIYkBAACmAYkBIooBAQCbAQAhAwAAABwAIAEAAC4AMBsAAC8AIAMAAAAcACABAAAdADACAAABACABAAAABQAgAQAAAAUAIAMAAAADACABAAAEADACAAAFACADAAAAAwAgAQAABAAwAgAABQAgAwAAAAMAIAEAAAQAMAIAAAUAIAsDAAD-AQAgBQAA_wEAIAYAAIACACBlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQEPAAA3ACAIZQEAAAABbQEAAAABbkAAAAABb0AAAAABfQEAAAABfwAAAH8CggEBAAAAAYMBIAAAAAEBDwAAOQAwAQ8AADkAMAsDAADjAQAgBQAA5AEAIAYAAOUBACBlAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhfQEAxAEAIX8AANkBfyKCAQEAxAEAIYMBIADiAQAhAgAAAAUAIA8AADwAIAhlAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhfQEAxAEAIX8AANkBfyKCAQEAxAEAIYMBIADiAQAhAgAAAAMAIA8AAD4AIAIAAAADACAPAAA-ACADAAAABQAgFgAANwAgFwAAPAAgAQAAAAUAIAEAAAADACADBwAA3wEAIBwAAOEBACAdAADgAQAgC2IAAKEBADBjAABFABBkAAChAQAwZQEAiwEAIW0BAIsBACFuQACOAQAhb0AAjgEAIX0BAIsBACF_AACaAX8iggEBAIsBACGDASAAogEAIQMAAAADACABAABEADAbAABFACADAAAAAwAgAQAABAAwAgAABQAgAQAAAAkAIAEAAAAJACADAAAABwAgAQAACAAwAgAACQAgAwAAAAcAIAEAAAgAMAIAAAkAIAMAAAAHACABAAAIADACAAAJACAMAwAA3gEAIAQAAN0BACBlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQEPAABNACAKZQEAAAABbQEAAAABbkAAAAABb0AAAAABexAAAAABfAEAAAABfQEAAAABfwAAAH8CgAFAAAAAAYEBAQAAAAEBDwAATwAwAQ8AAE8AMAwDAADcAQAgBAAA2wEAIGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF7EADGAQAhfAEAxAEAIX0BAMQBACF_AADZAX8igAFAAMcBACGBAQEA2gEAIQIAAAAJACAPAABSACAKZQEAxAEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhfQEAxAEAIX8AANkBfyKAAUAAxwEAIYEBAQDaAQAhAgAAAAcAIA8AAFQAIAIAAAAHACAPAABUACADAAAACQAgFgAATQAgFwAAUgAgAQAAAAkAIAEAAAAHACAGBwAA1AEAIBwAANcBACAdAADWAQAgPgAA1QEAID8AANgBACCBAQAA0wEAIA1iAACZAQAwYwAAWwAQZAAAmQEAMGUBAIsBACFtAQCLAQAhbkAAjgEAIW9AAI4BACF7EACNAQAhfAEAiwEAIX0BAIsBACF_AACaAX8igAFAAI4BACGBAQEAmwEAIQMAAAAHACABAABaADAbAABbACADAAAABwAgAQAACAAwAgAACQAgAQAAAA0AIAEAAAANACADAAAACwAgAQAADAAwAgAADQAgAwAAAAsAIAEAAAwAMAIAAA0AIAMAAAALACABAAAMADACAAANACAKAwAA0gEAIAQAANEBACBlAQAAAAFmAgAAAAFnAgAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAEBDwAAYwAgCGUBAAAAAWYCAAAAAWcCAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAXwBAAAAAQEPAABlADABDwAAZQAwCgMAANABACAEAADPAQAgZQEAxAEAIWYCAMUBACFnAgDFAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhexAAxgEAIXwBAMQBACECAAAADQAgDwAAaAAgCGUBAMQBACFmAgDFAQAhZwIAxQEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhAgAAAAsAIA8AAGoAIAIAAAALACAPAABqACADAAAADQAgFgAAYwAgFwAAaAAgAQAAAA0AIAEAAAALACAFBwAAygEAIBwAAM0BACAdAADMAQAgPgAAywEAID8AAM4BACALYgAAmAEAMGMAAHEAEGQAAJgBADBlAQCLAQAhZgIAjAEAIWcCAIwBACFtAQCLAQAhbkAAjgEAIW9AAI4BACF7EACNAQAhfAEAiwEAIQMAAAALACABAABwADAbAABxACADAAAACwAgAQAADAAwAgAADQAgAQAAABUAIAEAAAAVACADAAAAEwAgAQAAFAAwAgAAFQAgAwAAABMAIAEAABQAMAIAABUAIAMAAAATACABAAAUADACAAAVACAMAwAAyQEAIGUBAAAAAWYCAAAAAWcCAAAAAWgQAAAAAWkQAAAAAWoQAAAAAWsQAAAAAWwQAAAAAW0BAAAAAW5AAAAAAW9AAAAAAQEPAAB5ACALZQEAAAABZgIAAAABZwIAAAABaBAAAAABaRAAAAABahAAAAABaxAAAAABbBAAAAABbQEAAAABbkAAAAABb0AAAAABAQ8AAHsAMAEPAAB7ADAMAwAAyAEAIGUBAMQBACFmAgDFAQAhZwIAxQEAIWgQAMYBACFpEADGAQAhahAAxgEAIWsQAMYBACFsEADGAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhAgAAABUAIA8AAH4AIAtlAQDEAQAhZgIAxQEAIWcCAMUBACFoEADGAQAhaRAAxgEAIWoQAMYBACFrEADGAQAhbBAAxgEAIW0BAMQBACFuQADHAQAhb0AAxwEAIQIAAAATACAPAACAAQAgAgAAABMAIA8AAIABACADAAAAFQAgFgAAeQAgFwAAfgAgAQAAABUAIAEAAAATACAFBwAAvwEAIBwAAMIBACAdAADBAQAgPgAAwAEAID8AAMMBACAOYgAAigEAMGMAAIcBABBkAACKAQAwZQEAiwEAIWYCAIwBACFnAgCMAQAhaBAAjQEAIWkQAI0BACFqEACNAQAhaxAAjQEAIWwQAI0BACFtAQCLAQAhbkAAjgEAIW9AAI4BACEDAAAAEwAgAQAAhgEAMBsAAIcBACADAAAAEwAgAQAAFAAwAgAAFQAgDmIAAIoBADBjAACHAQAQZAAAigEAMGUBAIsBACFmAgCMAQAhZwIAjAEAIWgQAI0BACFpEACNAQAhahAAjQEAIWsQAI0BACFsEACNAQAhbQEAiwEAIW5AAI4BACFvQACOAQAhDgcAAJABACAcAACXAQAgHQAAlwEAIHABAAAAAXEBAAAABHIBAAAABHMBAAAAAXQBAAAAAXUBAAAAAXYBAAAAAXcBAJYBACF4AQAAAAF5AQAAAAF6AQAAAAENBwAAkAEAIBwAAJABACAdAACQAQAgPgAAlQEAID8AAJABACBwAgAAAAFxAgAAAARyAgAAAARzAgAAAAF0AgAAAAF1AgAAAAF2AgAAAAF3AgCUAQAhDQcAAJABACAcAACTAQAgHQAAkwEAID4AAJMBACA_AACTAQAgcBAAAAABcRAAAAAEchAAAAAEcxAAAAABdBAAAAABdRAAAAABdhAAAAABdxAAkgEAIQsHAACQAQAgHAAAkQEAIB0AAJEBACBwQAAAAAFxQAAAAARyQAAAAARzQAAAAAF0QAAAAAF1QAAAAAF2QAAAAAF3QACPAQAhCwcAAJABACAcAACRAQAgHQAAkQEAIHBAAAAAAXFAAAAABHJAAAAABHNAAAAAAXRAAAAAAXVAAAAAAXZAAAAAAXdAAI8BACEIcAIAAAABcQIAAAAEcgIAAAAEcwIAAAABdAIAAAABdQIAAAABdgIAAAABdwIAkAEAIQhwQAAAAAFxQAAAAARyQAAAAARzQAAAAAF0QAAAAAF1QAAAAAF2QAAAAAF3QACRAQAhDQcAAJABACAcAACTAQAgHQAAkwEAID4AAJMBACA_AACTAQAgcBAAAAABcRAAAAAEchAAAAAEcxAAAAABdBAAAAABdRAAAAABdhAAAAABdxAAkgEAIQhwEAAAAAFxEAAAAARyEAAAAARzEAAAAAF0EAAAAAF1EAAAAAF2EAAAAAF3EACTAQAhDQcAAJABACAcAACQAQAgHQAAkAEAID4AAJUBACA_AACQAQAgcAIAAAABcQIAAAAEcgIAAAAEcwIAAAABdAIAAAABdQIAAAABdgIAAAABdwIAlAEAIQhwCAAAAAFxCAAAAARyCAAAAARzCAAAAAF0CAAAAAF1CAAAAAF2CAAAAAF3CACVAQAhDgcAAJABACAcAACXAQAgHQAAlwEAIHABAAAAAXEBAAAABHIBAAAABHMBAAAAAXQBAAAAAXUBAAAAAXYBAAAAAXcBAJYBACF4AQAAAAF5AQAAAAF6AQAAAAELcAEAAAABcQEAAAAEcgEAAAAEcwEAAAABdAEAAAABdQEAAAABdgEAAAABdwEAlwEAIXgBAAAAAXkBAAAAAXoBAAAAAQtiAACYAQAwYwAAcQAQZAAAmAEAMGUBAIsBACFmAgCMAQAhZwIAjAEAIW0BAIsBACFuQACOAQAhb0AAjgEAIXsQAI0BACF8AQCLAQAhDWIAAJkBADBjAABbABBkAACZAQAwZQEAiwEAIW0BAIsBACFuQACOAQAhb0AAjgEAIXsQAI0BACF8AQCLAQAhfQEAiwEAIX8AAJoBfyKAAUAAjgEAIYEBAQCbAQAhBwcAAJABACAcAACgAQAgHQAAoAEAIHAAAAB_AnEAAAB_CHIAAAB_CHcAAJ8BfyIOBwAAnQEAIBwAAJ4BACAdAACeAQAgcAEAAAABcQEAAAAFcgEAAAAFcwEAAAABdAEAAAABdQEAAAABdgEAAAABdwEAnAEAIXgBAAAAAXkBAAAAAXoBAAAAAQ4HAACdAQAgHAAAngEAIB0AAJ4BACBwAQAAAAFxAQAAAAVyAQAAAAVzAQAAAAF0AQAAAAF1AQAAAAF2AQAAAAF3AQCcAQAheAEAAAABeQEAAAABegEAAAABCHACAAAAAXECAAAABXICAAAABXMCAAAAAXQCAAAAAXUCAAAAAXYCAAAAAXcCAJ0BACELcAEAAAABcQEAAAAFcgEAAAAFcwEAAAABdAEAAAABdQEAAAABdgEAAAABdwEAngEAIXgBAAAAAXkBAAAAAXoBAAAAAQcHAACQAQAgHAAAoAEAIB0AAKABACBwAAAAfwJxAAAAfwhyAAAAfwh3AACfAX8iBHAAAAB_AnEAAAB_CHIAAAB_CHcAAKABfyILYgAAoQEAMGMAAEUAEGQAAKEBADBlAQCLAQAhbQEAiwEAIW5AAI4BACFvQACOAQAhfQEAiwEAIX8AAJoBfyKCAQEAiwEAIYMBIACiAQAhBQcAAJABACAcAACkAQAgHQAApAEAIHAgAAAAAXcgAKMBACEFBwAAkAEAIBwAAKQBACAdAACkAQAgcCAAAAABdyAAowEAIQJwIAAAAAF3IACkAQAhDGIAAKUBADBjAAAvABBkAAClAQAwZQEAiwEAIW5AAI4BACFvQACOAQAhhAEBAIsBACGFAQEAiwEAIYYBAQCbAQAhhwEBAJsBACGJAQAApgGJASKKAQEAmwEAIQcHAACQAQAgHAAAqAEAIB0AAKgBACBwAAAAiQECcQAAAIkBCHIAAACJAQh3AACnAYkBIgcHAACQAQAgHAAAqAEAIB0AAKgBACBwAAAAiQECcQAAAIkBCHIAAACJAQh3AACnAYkBIgRwAAAAiQECcQAAAIkBCHIAAACJAQh3AACoAYkBIhAFAACvAQAgBgAAsAEAIAgAAK4BACAJAACxAQAgYgAAqQEAMGMAABwAEGQAAKkBADBlAQCqAQAhbkAArQEAIW9AAK0BACGEAQEAqgEAIYUBAQCqAQAhhgEBAKsBACGHAQEAqwEAIYkBAACsAYkBIooBAQCrAQAhC3ABAAAAAXEBAAAABHIBAAAABHMBAAAAAXQBAAAAAXUBAAAAAXYBAAAAAXcBAJcBACF4AQAAAAF5AQAAAAF6AQAAAAELcAEAAAABcQEAAAAFcgEAAAAFcwEAAAABdAEAAAABdQEAAAABdgEAAAABdwEAngEAIXgBAAAAAXkBAAAAAXoBAAAAAQRwAAAAiQECcQAAAIkBCHIAAACJAQh3AACoAYkBIghwQAAAAAFxQAAAAARyQAAAAARzQAAAAAF0QAAAAAF1QAAAAAF2QAAAAAF3QACRAQAhA4sBAAADACCMAQAAAwAgjQEAAAMAIAOLAQAABwAgjAEAAAcAII0BAAAHACADiwEAAAsAIIwBAAALACCNAQAACwAgA4sBAAATACCMAQAAEwAgjQEAABMAIANmAgAAAAFnAgAAAAFtAQAAAAEPAwAAtgEAIGIAALMBADBjAAATABBkAACzAQAwZQEAqgEAIWYCALQBACFnAgC0AQAhaBAAtQEAIWkQALUBACFqEAC1AQAhaxAAtQEAIWwQALUBACFtAQCqAQAhbkAArQEAIW9AAK0BACEIcAIAAAABcQIAAAAEcgIAAAAEcwIAAAABdAIAAAABdQIAAAABdgIAAAABdwIAkAEAIQhwEAAAAAFxEAAAAARyEAAAAARzEAAAAAF0EAAAAAF1EAAAAAF2EAAAAAF3EACTAQAhEgUAAK8BACAGAACwAQAgCAAArgEAIAkAALEBACBiAACpAQAwYwAAHAAQZAAAqQEAMGUBAKoBACFuQACtAQAhb0AArQEAIYQBAQCqAQAhhQEBAKoBACGGAQEAqwEAIYcBAQCrAQAhiQEAAKwBiQEiigEBAKsBACGRAQAAHAAgkgEAABwAIARmAgAAAAFnAgAAAAFtAQAAAAF8AQAAAAENAwAAtgEAIAQAALkBACBiAAC4AQAwYwAACwAQZAAAuAEAMGUBAKoBACFmAgC0AQAhZwIAtAEAIW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhEAMAALYBACAFAACvAQAgBgAAsAEAIGIAAL0BADBjAAADABBkAAC9AQAwZQEAqgEAIW0BAKoBACFuQACtAQAhb0AArQEAIX0BAKoBACF_AAC7AX8iggEBAKoBACGDASAAvgEAIZEBAAADACCSAQAAAwAgDwMAALYBACAEAAC5AQAgYgAAugEAMGMAAAcAEGQAALoBADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACF9AQCqAQAhfwAAuwF_IoABQACtAQAhgQEBAKsBACEEcAAAAH8CcQAAAH8IcgAAAH8IdwAAoAF_IgNtAQAAAAF9AQAAAAF_AAAAfwIOAwAAtgEAIAUAAK8BACAGAACwAQAgYgAAvQEAMGMAAAMAEGQAAL0BADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhfQEAqgEAIX8AALsBfyKCAQEAqgEAIYMBIAC-AQAhAnAgAAAAAXcgAKQBACEAAAAAAAGWAQEAAAABBZYBAgAAAAGcAQIAAAABnQECAAAAAZ4BAgAAAAGfAQIAAAABBZYBEAAAAAGcARAAAAABnQEQAAAAAZ4BEAAAAAGfARAAAAABAZYBQAAAAAEFFgAA3AIAIBcAAN8CACCTAQAA3QIAIJQBAADeAgAgmQEAAAEAIAMWAADcAgAgkwEAAN0CACCZAQAAAQAgAAAAAAAFFgAA1AIAIBcAANoCACCTAQAA1QIAIJQBAADZAgAgmQEAAAUAIAUWAADSAgAgFwAA1wIAIJMBAADTAgAglAEAANYCACCZAQAAAQAgAxYAANQCACCTAQAA1QIAIJkBAAAFACADFgAA0gIAIJMBAADTAgAgmQEAAAEAIAAAAAAAAAGWAQAAAH8CAZYBAQAAAAEFFgAAygIAIBcAANACACCTAQAAywIAIJQBAADPAgAgmQEAAAUAIAUWAADIAgAgFwAAzQIAIJMBAADJAgAglAEAAMwCACCZAQAAAQAgAxYAAMoCACCTAQAAywIAIJkBAAAFACADFgAAyAIAIJMBAADJAgAgmQEAAAEAIAAAAAGWASAAAAABBRYAAMECACAXAADGAgAgkwEAAMICACCUAQAAxQIAIJkBAAABACALFgAA8gEAMBcAAPcBADCTAQAA8wEAMJQBAAD0AQAwlQEAAPUBACCWAQAA9gEAMJcBAAD2AQAwmAEAAPYBADCZAQAA9gEAMJoBAAD4AQAwmwEAAPkBADALFgAA5gEAMBcAAOsBADCTAQAA5wEAMJQBAADoAQAwlQEAAOkBACCWAQAA6gEAMJcBAADqAQAwmAEAAOoBADCZAQAA6gEAMJoBAADsAQAwmwEAAO0BADAIAwAA0gEAIGUBAAAAAWYCAAAAAWcCAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAQIAAAANACAWAADxAQAgAwAAAA0AIBYAAPEBACAXAADwAQAgAQ8AAMQCADAOAwAAtgEAIAQAALkBACBiAAC4AQAwYwAACwAQZAAAuAEAMGUBAAAAAWYCALQBACFnAgC0AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACGPAQAAtwEAIAIAAAANACAPAADwAQAgAgAAAO4BACAPAADvAQAgC2IAAO0BADBjAADuAQAQZAAA7QEAMGUBAKoBACFmAgC0AQAhZwIAtAEAIW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhC2IAAO0BADBjAADuAQAQZAAA7QEAMGUBAKoBACFmAgC0AQAhZwIAtAEAIW0BAKoBACFuQACtAQAhb0AArQEAIXsQALUBACF8AQCqAQAhB2UBAMQBACFmAgDFAQAhZwIAxQEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACEIAwAA0AEAIGUBAMQBACFmAgDFAQAhZwIAxQEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACEIAwAA0gEAIGUBAAAAAWYCAAAAAWcCAAAAAW0BAAAAAW5AAAAAAW9AAAAAAXsQAAAAAQoDAADeAQAgZQEAAAABbQEAAAABbkAAAAABb0AAAAABexAAAAABfQEAAAABfwAAAH8CgAFAAAAAAYEBAQAAAAECAAAACQAgFgAA_QEAIAMAAAAJACAWAAD9AQAgFwAA_AEAIAEPAADDAgAwDwMAALYBACAEAAC5AQAgYgAAugEAMGMAAAcAEGQAALoBADBlAQAAAAFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIX0BAKoBACF_AAC7AX8igAFAAK0BACGBAQEAqwEAIQIAAAAJACAPAAD8AQAgAgAAAPoBACAPAAD7AQAgDWIAAPkBADBjAAD6AQAQZAAA-QEAMGUBAKoBACFtAQCqAQAhbkAArQEAIW9AAK0BACF7EAC1AQAhfAEAqgEAIX0BAKoBACF_AAC7AX8igAFAAK0BACGBAQEAqwEAIQ1iAAD5AQAwYwAA-gEAEGQAAPkBADBlAQCqAQAhbQEAqgEAIW5AAK0BACFvQACtAQAhexAAtQEAIXwBAKoBACF9AQCqAQAhfwAAuwF_IoABQACtAQAhgQEBAKsBACEJZQEAxAEAIW0BAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF9AQDEAQAhfwAA2QF_IoABQADHAQAhgQEBANoBACEKAwAA3AEAIGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF7EADGAQAhfQEAxAEAIX8AANkBfyKAAUAAxwEAIYEBAQDaAQAhCgMAAN4BACBlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQMWAADBAgAgkwEAAMICACCZAQAAAQAgBBYAAPIBADCTAQAA8wEAMJUBAAD1AQAgmQEAAPYBADAEFgAA5gEAMJMBAADnAQAwlQEAAOkBACCZAQAA6gEAMAAAAAGWAQAAAIkBAgsWAACnAgAwFwAArAIAMJMBAACoAgAwlAEAAKkCADCVAQAAqgIAIJYBAACrAgAwlwEAAKsCADCYAQAAqwIAMJkBAACrAgAwmgEAAK0CADCbAQAArgIAMAsWAACeAgAwFwAAogIAMJMBAACfAgAwlAEAAKACADCVAQAAoQIAIJYBAAD2AQAwlwEAAPYBADCYAQAA9gEAMJkBAAD2AQAwmgEAAKMCADCbAQAA-QEAMAsWAACVAgAwFwAAmQIAMJMBAACWAgAwlAEAAJcCADCVAQAAmAIAIJYBAADqAQAwlwEAAOoBADCYAQAA6gEAMJkBAADqAQAwmgEAAJoCADCbAQAA7QEAMAsWAACJAgAwFwAAjgIAMJMBAACKAgAwlAEAAIsCADCVAQAAjAIAIJYBAACNAgAwlwEAAI0CADCYAQAAjQIAMJkBAACNAgAwmgEAAI8CADCbAQAAkAIAMAplAQAAAAFmAgAAAAFnAgAAAAFoEAAAAAFpEAAAAAFqEAAAAAFrEAAAAAFsEAAAAAFuQAAAAAFvQAAAAAECAAAAFQAgFgAAlAIAIAMAAAAVACAWAACUAgAgFwAAkwIAIAEPAADAAgAwEAMAALYBACBiAACzAQAwYwAAEwAQZAAAswEAMGUBAAAAAWYCALQBACFnAgC0AQAhaBAAtQEAIWkQALUBACFqEAC1AQAhaxAAtQEAIWwQALUBACFtAQCqAQAhbkAArQEAIW9AAK0BACGOAQAAsgEAIAIAAAAVACAPAACTAgAgAgAAAJECACAPAACSAgAgDmIAAJACADBjAACRAgAQZAAAkAIAMGUBAKoBACFmAgC0AQAhZwIAtAEAIWgQALUBACFpEAC1AQAhahAAtQEAIWsQALUBACFsEAC1AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhDmIAAJACADBjAACRAgAQZAAAkAIAMGUBAKoBACFmAgC0AQAhZwIAtAEAIWgQALUBACFpEAC1AQAhahAAtQEAIWsQALUBACFsEAC1AQAhbQEAqgEAIW5AAK0BACFvQACtAQAhCmUBAMQBACFmAgDFAQAhZwIAxQEAIWgQAMYBACFpEADGAQAhahAAxgEAIWsQAMYBACFsEADGAQAhbkAAxwEAIW9AAMcBACEKZQEAxAEAIWYCAMUBACFnAgDFAQAhaBAAxgEAIWkQAMYBACFqEADGAQAhaxAAxgEAIWwQAMYBACFuQADHAQAhb0AAxwEAIQplAQAAAAFmAgAAAAFnAgAAAAFoEAAAAAFpEAAAAAFqEAAAAAFrEAAAAAFsEAAAAAFuQAAAAAFvQAAAAAEIBAAA0QEAIGUBAAAAAWYCAAAAAWcCAAAAAW5AAAAAAW9AAAAAAXsQAAAAAXwBAAAAAQIAAAANACAWAACdAgAgAwAAAA0AIBYAAJ0CACAXAACcAgAgAQ8AAL8CADACAAAADQAgDwAAnAIAIAIAAADuAQAgDwAAmwIAIAdlAQDEAQAhZgIAxQEAIWcCAMUBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhCAQAAM8BACBlAQDEAQAhZgIAxQEAIWcCAMUBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhCAQAANEBACBlAQAAAAFmAgAAAAFnAgAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAEKBAAA3QEAIGUBAAAAAW5AAAAAAW9AAAAAAXsQAAAAAXwBAAAAAX0BAAAAAX8AAAB_AoABQAAAAAGBAQEAAAABAgAAAAkAIBYAAKYCACADAAAACQAgFgAApgIAIBcAAKUCACABDwAAvgIAMAIAAAAJACAPAAClAgAgAgAAAPoBACAPAACkAgAgCWUBAMQBACFuQADHAQAhb0AAxwEAIXsQAMYBACF8AQDEAQAhfQEAxAEAIX8AANkBfyKAAUAAxwEAIYEBAQDaAQAhCgQAANsBACBlAQDEAQAhbkAAxwEAIW9AAMcBACF7EADGAQAhfAEAxAEAIX0BAMQBACF_AADZAX8igAFAAMcBACGBAQEA2gEAIQoEAADdAQAgZQEAAAABbkAAAAABb0AAAAABexAAAAABfAEAAAABfQEAAAABfwAAAH8CgAFAAAAAAYEBAQAAAAEJBQAA_wEAIAYAAIACACBlAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQIAAAAFACAWAACyAgAgAwAAAAUAIBYAALICACAXAACxAgAgAQ8AAL0CADAPAwAAtgEAIAUAAK8BACAGAACwAQAgYgAAvQEAMGMAAAMAEGQAAL0BADBlAQAAAAFtAQCqAQAhbkAArQEAIW9AAK0BACF9AQCqAQAhfwAAuwF_IoIBAQCqAQAhgwEgAL4BACGQAQAAvAEAIAIAAAAFACAPAACxAgAgAgAAAK8CACAPAACwAgAgC2IAAK4CADBjAACvAgAQZAAArgIAMGUBAKoBACFtAQCqAQAhbkAArQEAIW9AAK0BACF9AQCqAQAhfwAAuwF_IoIBAQCqAQAhgwEgAL4BACELYgAArgIAMGMAAK8CABBkAACuAgAwZQEAqgEAIW0BAKoBACFuQACtAQAhb0AArQEAIX0BAKoBACF_AAC7AX8iggEBAKoBACGDASAAvgEAIQdlAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACEJBQAA5AEAIAYAAOUBACBlAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACEJBQAA_wEAIAYAAIACACBlAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQQWAACnAgAwkwEAAKgCADCVAQAAqgIAIJkBAACrAgAwBBYAAJ4CADCTAQAAnwIAMJUBAAChAgAgmQEAAPYBADAEFgAAlQIAMJMBAACWAgAwlQEAAJgCACCZAQAA6gEAMAQWAACJAgAwkwEAAIoCADCVAQAAjAIAIJkBAACNAgAwAAAAAAcFAAC4AgAgBgAAuQIAIAgAALcCACAJAAC6AgAghgEAANMBACCHAQAA0wEAIIoBAADTAQAgAwMAALsCACAFAAC4AgAgBgAAuQIAIAdlAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQllAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQdlAQAAAAFmAgAAAAFnAgAAAAFuQAAAAAFvQAAAAAF7EAAAAAF8AQAAAAEKZQEAAAABZgIAAAABZwIAAAABaBAAAAABaRAAAAABahAAAAABaxAAAAABbBAAAAABbkAAAAABb0AAAAABDAUAALQCACAGAAC1AgAgCQAAtgIAIGUBAAAAAW5AAAAAAW9AAAAAAYQBAQAAAAGFAQEAAAABhgEBAAAAAYcBAQAAAAGJAQAAAIkBAooBAQAAAAECAAAAAQAgFgAAwQIAIAllAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAF9AQAAAAF_AAAAfwKAAUAAAAABgQEBAAAAAQdlAQAAAAFmAgAAAAFnAgAAAAFtAQAAAAFuQAAAAAFvQAAAAAF7EAAAAAEDAAAAHAAgFgAAwQIAIBcAAMcCACAOAAAAHAAgBQAAhgIAIAYAAIcCACAJAACIAgAgDwAAxwIAIGUBAMQBACFuQADHAQAhb0AAxwEAIYQBAQDEAQAhhQEBAMQBACGGAQEA2gEAIYcBAQDaAQAhiQEAAIQCiQEiigEBANoBACEMBQAAhgIAIAYAAIcCACAJAACIAgAgZQEAxAEAIW5AAMcBACFvQADHAQAhhAEBAMQBACGFAQEAxAEAIYYBAQDaAQAhhwEBANoBACGJAQAAhAKJASKKAQEA2gEAIQwGAAC1AgAgCAAAswIAIAkAALYCACBlAQAAAAFuQAAAAAFvQAAAAAGEAQEAAAABhQEBAAAAAYYBAQAAAAGHAQEAAAABiQEAAACJAQKKAQEAAAABAgAAAAEAIBYAAMgCACAKAwAA_gEAIAYAAIACACBlAQAAAAFtAQAAAAFuQAAAAAFvQAAAAAF9AQAAAAF_AAAAfwKCAQEAAAABgwEgAAAAAQIAAAAFACAWAADKAgAgAwAAABwAIBYAAMgCACAXAADOAgAgDgAAABwAIAYAAIcCACAIAACFAgAgCQAAiAIAIA8AAM4CACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGHAQEA2gEAIYkBAACEAokBIooBAQDaAQAhDAYAAIcCACAIAACFAgAgCQAAiAIAIGUBAMQBACFuQADHAQAhb0AAxwEAIYQBAQDEAQAhhQEBAMQBACGGAQEA2gEAIYcBAQDaAQAhiQEAAIQCiQEiigEBANoBACEDAAAAAwAgFgAAygIAIBcAANECACAMAAAAAwAgAwAA4wEAIAYAAOUBACAPAADRAgAgZQEAxAEAIW0BAMQBACFuQADHAQAhb0AAxwEAIX0BAMQBACF_AADZAX8iggEBAMQBACGDASAA4gEAIQoDAADjAQAgBgAA5QEAIGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACEMBQAAtAIAIAgAALMCACAJAAC2AgAgZQEAAAABbkAAAAABb0AAAAABhAEBAAAAAYUBAQAAAAGGAQEAAAABhwEBAAAAAYkBAAAAiQECigEBAAAAAQIAAAABACAWAADSAgAgCgMAAP4BACAFAAD_AQAgZQEAAAABbQEAAAABbkAAAAABb0AAAAABfQEAAAABfwAAAH8CggEBAAAAAYMBIAAAAAECAAAABQAgFgAA1AIAIAMAAAAcACAWAADSAgAgFwAA2AIAIA4AAAAcACAFAACGAgAgCAAAhQIAIAkAAIgCACAPAADYAgAgZQEAxAEAIW5AAMcBACFvQADHAQAhhAEBAMQBACGFAQEAxAEAIYYBAQDaAQAhhwEBANoBACGJAQAAhAKJASKKAQEA2gEAIQwFAACGAgAgCAAAhQIAIAkAAIgCACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGHAQEA2gEAIYkBAACEAokBIooBAQDaAQAhAwAAAAMAIBYAANQCACAXAADbAgAgDAAAAAMAIAMAAOMBACAFAADkAQAgDwAA2wIAIGUBAMQBACFtAQDEAQAhbkAAxwEAIW9AAMcBACF9AQDEAQAhfwAA2QF_IoIBAQDEAQAhgwEgAOIBACEKAwAA4wEAIAUAAOQBACBlAQDEAQAhbQEAxAEAIW5AAMcBACFvQADHAQAhfQEAxAEAIX8AANkBfyKCAQEAxAEAIYMBIADiAQAhDAUAALQCACAGAAC1AgAgCAAAswIAIGUBAAAAAW5AAAAAAW9AAAAAAYQBAQAAAAGFAQEAAAABhgEBAAAAAYcBAQAAAAGJAQAAAIkBAooBAQAAAAECAAAAAQAgFgAA3AIAIAMAAAAcACAWAADcAgAgFwAA4AIAIA4AAAAcACAFAACGAgAgBgAAhwIAIAgAAIUCACAPAADgAgAgZQEAxAEAIW5AAMcBACFvQADHAQAhhAEBAMQBACGFAQEAxAEAIYYBAQDaAQAhhwEBANoBACGJAQAAhAKJASKKAQEA2gEAIQwFAACGAgAgBgAAhwIAIAgAAIUCACBlAQDEAQAhbkAAxwEAIW9AAMcBACGEAQEAxAEAIYUBAQDEAQAhhgEBANoBACGHAQEA2gEAIYkBAACEAokBIooBAQDaAQAhBQURAwYSBAcABwgGAgkWBgQDAAEFCgMGDgQHAAUCAwABBAACAgMAAQQAAgIFDwAGEAABAwABBAUYAAYZAAgXAAkaAAAAAAMHAAwcAA0dAA4AAAADBwAMHAANHQAOAQMAAQEDAAEDBwATHAAUHQAVAAAAAwcAExwAFB0AFQIDAAEEAAICAwABBAACBQcAGhwAHR0AHj4AGz8AHAAAAAAABQcAGhwAHR0AHj4AGz8AHAIDAAEEAAICAwABBAACBQcAIxwAJh0AJz4AJD8AJQAAAAAABQcAIxwAJh0AJz4AJD8AJQEDAAEBAwABBQcALBwALx0AMD4ALT8ALgAAAAAABQcALBwALx0AMD4ALT8ALgoCAQsbAQweAQ0fAQ4gARAiAREkCBIlCRMnARQpCBUqChgrARksARotCB4wCx8xDyAyAiEzAiI0AiM1AiQ2AiU4AiY6CCc7ECg9Aik_CCpAEStBAixCAi1DCC5GEi9HFjBIAzFJAzJKAzNLAzRMAzVOAzZQCDdRFzhTAzlVCDpWGDtXAzxYAz1ZCEBcGUFdH0JeBENfBERgBEVhBEZiBEdkBEhmCElnIEppBEtrCExsIU1tBE5uBE9vCFByIlFzKFJ0BlN1BlR2BlV3BlZ4Bld6Blh8CFl9KVp_BluBAQhcggEqXYMBBl6EAQZfhQEIYIgBK2GJATE"
     };
     config2.compilerWasm = {
       getRuntime: async () => require_query_compiler_fast_bg(),
@@ -18693,6 +19046,9 @@ var helmet = Object.assign(
   }
 );
 
+// app/server.ts
+var import_cors = __toESM(require_lib());
+
 // app/config/index.ts
 var import_dotenv = __toESM(require("dotenv"));
 var import_path = __toESM(require("path"));
@@ -18701,6 +19057,7 @@ var SECRET = {
   JWT_SECRET: process.env.JWT_SECRET || "",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "1h"
 };
+console.log(SECRET);
 var CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "http://localhost:3001").split(",").map((url2) => url2.trim()).filter(Boolean);
 var APPS = {
   PORT: process.env.PORT || 3e3,
@@ -18953,7 +19310,7 @@ var mockAdapterErrors = {
 };
 
 // node_modules/pg/esm/index.mjs
-var import_lib = __toESM(require_lib2(), 1);
+var import_lib = __toESM(require_lib3(), 1);
 var Client = import_lib.default.Client;
 var Pool = import_lib.default.Pool;
 var Connection = import_lib.default.Connection;
@@ -33532,10 +33889,14 @@ function date4(params) {
 config(en_default());
 
 // app/validations/auth.ts
+var phoneSchema = external_exports.string().trim().min(10, "Nomor handphone minimal 10 digit").max(16, "Nomor handphone maksimal 16 karakter").regex(/^(\+62|62|0)\d{8,13}$/, "Format nomor handphone tidak valid (contoh: 082187199940)").optional().or(external_exports.literal(""));
 var registerSchema = external_exports.object({
   username: external_exports.string().trim().min(3, "Username minimal 3 karakter"),
   email: external_exports.string().trim().email("Format email tidak valid"),
-  password: external_exports.string().min(6, "Password minimal 6 karakter")
+  password: external_exports.string().min(6, "Password minimal 6 karakter"),
+  whatsapp: phoneSchema,
+  phoneNumber: phoneSchema,
+  phone: phoneSchema
 });
 var loginSchema = external_exports.object({
   email: external_exports.string().trim().email("Format email tidak valid"),
@@ -33543,10 +33904,17 @@ var loginSchema = external_exports.object({
 });
 var updateProfileSchema = external_exports.object({
   username: external_exports.string().trim().min(3, "Username minimal 3 karakter"),
-  email: external_exports.string().trim().email("Format email tidak valid")
+  email: external_exports.string().trim().email("Format email tidak valid"),
+  whatsapp: phoneSchema.nullable(),
+  phoneNumber: phoneSchema.nullable(),
+  phone: phoneSchema.nullable()
 });
 var changePasswordSchema = external_exports.object({
   currentPassword: external_exports.string().min(1, "Password saat ini wajib diisi"),
+  newPassword: external_exports.string().min(6, "Password baru minimal 6 karakter")
+});
+var resetPasswordSchema = external_exports.object({
+  email: external_exports.string().trim().email("Format email tidak valid"),
   newPassword: external_exports.string().min(6, "Password baru minimal 6 karakter")
 });
 
@@ -33556,6 +33924,7 @@ var publicUserSelect = {
   id: true,
   username: true,
   email: true,
+  whatsapp: true,
   provider: true,
   createdAt: true
 };
@@ -33593,6 +33962,21 @@ async function verifyPassword(input, stored) {
   }
   return input === stored;
 }
+function formatWhatsapp(phone) {
+  if (!phone) return null;
+  let cleaned = phone.trim();
+  if (!cleaned) return null;
+  if (cleaned.startsWith("+62")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("62")) {
+    return "+" + cleaned;
+  }
+  if (cleaned.startsWith("0")) {
+    return "+62" + cleaned.slice(1);
+  }
+  return "+62" + cleaned;
+}
 var register = async (req, res) => {
   try {
     const parsed = registerSchema.safeParse(req.body);
@@ -33600,7 +33984,8 @@ var register = async (req, res) => {
       res.status(400).json({ message: "Validasi gagal", errors: parsed.error.flatten().fieldErrors });
       return;
     }
-    const { username, email: email3, password } = parsed.data;
+    const { username, email: email3, password, whatsapp, phoneNumber, phone } = parsed.data;
+    const phoneInput = whatsapp ?? phoneNumber ?? phone;
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email: email3 }, { username }] }
     });
@@ -33609,7 +33994,12 @@ var register = async (req, res) => {
       return;
     }
     const user = await prisma.user.create({
-      data: { username, email: email3, password: await hashPassword(password) },
+      data: {
+        username,
+        email: email3,
+        password: await hashPassword(password),
+        whatsapp: formatWhatsapp(phoneInput)
+      },
       select: publicUserSelect
     });
     const token = import_jsonwebtoken.default.sign({ userId: user.id }, SECRET.JWT_SECRET, { expiresIn: "1d" });
@@ -33643,6 +34033,7 @@ var login = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        whatsapp: user.whatsapp,
         provider: user.provider,
         createdAt: user.createdAt
       },
@@ -33693,7 +34084,8 @@ var updateProfile = async (req, res) => {
       res.status(400).json({ message: "Validasi gagal", errors: parsed.error.flatten().fieldErrors });
       return;
     }
-    const { username, email: email3 } = parsed.data;
+    const { username, email: email3, whatsapp, phoneNumber, phone } = parsed.data;
+    const phoneInput = whatsapp ?? phoneNumber ?? phone;
     const conflict = await prisma.user.findFirst({
       where: {
         id: { not: req.userId },
@@ -33707,7 +34099,11 @@ var updateProfile = async (req, res) => {
     }
     const user = await prisma.user.update({
       where: { id: req.userId },
-      data: { username, email: email3 },
+      data: {
+        username,
+        email: email3,
+        whatsapp: phoneInput === "" ? null : formatWhatsapp(phoneInput)
+      },
       select: publicUserSelect
     });
     res.status(200).json({ message: "Profil berhasil diperbarui", user });
@@ -33786,6 +34182,33 @@ var deleteAccount = async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan server" });
   }
 };
+var resetPassword = async (req, res) => {
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Validasi gagal", errors: parsed.error.flatten().fieldErrors });
+      return;
+    }
+    const { email: email3, newPassword } = parsed.data;
+    const user = await prisma.user.findUnique({ where: { email: email3 } });
+    if (!user) {
+      res.status(404).json({ message: "Email tidak terdaftar" });
+      return;
+    }
+    if (!user.password) {
+      res.status(400).json({ message: "Akun ini menggunakan Google Sign-In dan tidak memiliki password lokal" });
+      return;
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: await hashPassword(newPassword) }
+    });
+    res.status(200).json({ message: "Password berhasil direset" });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ message: "Terjadi kesalahan server" });
+  }
+};
 
 // app/middlewares/auth.ts
 var import_jsonwebtoken2 = __toESM(require_jsonwebtoken());
@@ -33810,6 +34233,7 @@ var authenticate = (req, res, next) => {
 var router = (0, import_express.Router)();
 router.post("/register", register);
 router.post("/login", login);
+router.post("/reset-password", resetPassword);
 router.get("/me", authenticate, getCurrentUser);
 router.get("/profile", authenticate, getProfile);
 router.get("/account-summary", authenticate, getAccountSummary);
@@ -34112,15 +34536,58 @@ var createTransaction = async (req, res) => {
       res.status(400).json({ message: "Kategori tidak valid atau bukan milik user" });
       return;
     }
+    const transactionDate = new Date(date5);
     const transaction = await prisma.transaction.create({
       data: {
         ...rest,
-        date: new Date(date5),
+        date: transactionDate,
         userId: req.userId
       },
       include: { category: { select: { id: true, name: true, icon: true, type: true } } }
     });
-    res.status(201).json({ message: "Transaksi berhasil ditambahkan", transaction });
+    let budgetWarning = null;
+    if (rest.type === "EXPENSE") {
+      const txMonth = transactionDate.getMonth() + 1;
+      const txYear = transactionDate.getFullYear();
+      const budget = await prisma.budget.findUnique({
+        where: {
+          userId_categoryId_month_year: {
+            userId: req.userId,
+            categoryId: rest.categoryId,
+            month: txMonth,
+            year: txYear
+          }
+        }
+      });
+      if (budget) {
+        const startOfMonth = new Date(txYear, txMonth - 1, 1);
+        const endOfMonth = new Date(txYear, txMonth, 0, 23, 59, 59, 999);
+        const aggregate = await prisma.transaction.aggregate({
+          where: {
+            userId: req.userId,
+            categoryId: rest.categoryId,
+            type: "EXPENSE",
+            date: { gte: startOfMonth, lte: endOfMonth }
+          },
+          _sum: { amount: true }
+        });
+        const totalSpent = Number(aggregate._sum.amount || 0);
+        const budgetAmount = Number(budget.amount);
+        if (totalSpent > budgetAmount) {
+          budgetWarning = {
+            categoryName: category.name,
+            budgetAmount,
+            totalSpent,
+            overAmount: totalSpent - budgetAmount
+          };
+        }
+      }
+    }
+    res.status(201).json({
+      message: "Transaksi berhasil ditambahkan",
+      transaction,
+      budgetWarning
+    });
   } catch (err) {
     console.error("Create transaction error:", err);
     res.status(500).json({ message: "Terjadi kesalahan server" });
@@ -34393,7 +34860,9 @@ var getOverview = async (req, res) => {
     const totalIncome = Number(incomeAgg._sum.amount || 0);
     const totalExpense = Number(expenseAgg._sum.amount || 0);
     res.status(200).json({
-      totalBalance: totalIncome - totalExpense
+      totalBalance: totalIncome - totalExpense,
+      totalIncome,
+      totalExpense
     });
   } catch (err) {
     console.error("Get overview error:", err);
@@ -34562,7 +35031,15 @@ var routes_default = router6;
 var app = (0, import_express7.default)();
 var isProduction = process.env.NODE_ENV === "production";
 ConnectDB(prisma);
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: false
+}));
+app.use((0, import_cors.default)({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(import_express7.default.json());
 app.use(import_express7.default.urlencoded({ extended: false }));
 app.use("/api", routes_default);
@@ -34577,6 +35054,20 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 /*! Bundled license information:
+
+object-assign/index.js:
+  (*
+  object-assign
+  (c) Sindre Sorhus
+  @license MIT
+  *)
+
+vary/index.js:
+  (*!
+   * vary
+   * Copyright(c) 2014-2017 Douglas Christopher Wilson
+   * MIT Licensed
+   *)
 
 @prisma/client-runtime-utils/dist/index.js:
   (*! Bundled license information:

@@ -1,15 +1,19 @@
 import { z } from 'zod'
 
+const phoneSchema = z.string().trim()
+    .min(10, 'Nomor handphone minimal 10 digit')
+    .max(16, 'Nomor handphone maksimal 16 karakter')
+    .regex(/^(\+62|62|0)\d{8,13}$/, 'Format nomor handphone tidak valid (contoh: 082187199940)')
+    .optional()
+    .or(z.literal(''))
+
 export const registerSchema = z.object({
     username: z.string().trim().min(3, 'Username minimal 3 karakter'),
     email: z.string().trim().email('Format email tidak valid'),
     password: z.string().min(6, 'Password minimal 6 karakter'),
-    whatsapp: z.string().trim()
-        .min(10, 'Nomor WhatsApp minimal 10 digit')
-        .max(16, 'Nomor WhatsApp maksimal 16 karakter')
-        .regex(/^(\+62|62|0)\d{8,13}$/, 'Format nomor WhatsApp tidak valid (contoh: 082187199940)')
-        .optional()
-        .or(z.literal('')),
+    whatsapp: phoneSchema,
+    phoneNumber: phoneSchema,
+    phone: phoneSchema,
 })
 
 export const loginSchema = z.object({
@@ -20,13 +24,9 @@ export const loginSchema = z.object({
 export const updateProfileSchema = z.object({
     username: z.string().trim().min(3, 'Username minimal 3 karakter'),
     email: z.string().trim().email('Format email tidak valid'),
-    whatsapp: z.string().trim()
-        .min(10, 'Nomor WhatsApp minimal 10 digit')
-        .max(16, 'Nomor WhatsApp maksimal 16 karakter')
-        .regex(/^(\+62|62|0)\d{8,13}$/, 'Format nomor WhatsApp tidak valid (contoh: 082187199940)')
-        .optional()
-        .or(z.literal(''))
-        .nullable(),
+    whatsapp: phoneSchema.nullable(),
+    phoneNumber: phoneSchema.nullable(),
+    phone: phoneSchema.nullable(),
 })
 
 export const changePasswordSchema = z.object({
