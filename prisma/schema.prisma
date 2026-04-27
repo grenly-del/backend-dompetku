@@ -28,6 +28,7 @@ model User {
   username String  @unique
   email    String  @unique
   password String? // nullable for Google OAuth users
+  whatsapp String? // nomor WhatsApp user, e.g. "6281234567890"
 
   // Auth provider
   provider   AuthProvider @default(LOCAL)

@@ -12,6 +12,7 @@ const publicUserSelect = {
     id: true,
     username: true,
     email: true,
+    whatsapp: true,
     provider: true,
     createdAt: true,
 }
@@ -66,7 +67,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             return
         }
 
-        const { username, email, password } = parsed.data
+        const { username, email, password, whatsapp } = parsed.data
 
         // Check if user already exists
         const existing = await prisma.user.findFirst({
@@ -78,7 +79,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         }
 
         const user = await prisma.user.create({
-            data: { username, email, password: await hashPassword(password) },
+            data: {
+                username,
+                email,
+                password: await hashPassword(password),
+                whatsapp: whatsapp || null,
+            },
             select: publicUserSelect
         })
 
@@ -121,6 +127,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                 id: user.id,
                 username: user.username,
                 email: user.email,
+                whatsapp: user.whatsapp,
                 provider: user.provider,
                 createdAt: user.createdAt,
             },
@@ -185,7 +192,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
             return
         }
 
-        const { username, email } = parsed.data
+        const { username, email, whatsapp } = parsed.data
 
         const conflict = await prisma.user.findFirst({
             where: {
@@ -202,7 +209,11 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
 
         const user = await prisma.user.update({
             where: { id: req.userId },
-            data: { username, email },
+            data: {
+                username,
+                email,
+                whatsapp: whatsapp === '' ? null : whatsapp,
+            },
             select: publicUserSelect,
         })
 

@@ -4,6 +4,12 @@ export const registerSchema = z.object({
     username: z.string().trim().min(3, 'Username minimal 3 karakter'),
     email: z.string().trim().email('Format email tidak valid'),
     password: z.string().min(6, 'Password minimal 6 karakter'),
+    whatsapp: z.string().trim()
+        .min(10, 'Nomor WhatsApp minimal 10 digit')
+        .max(15, 'Nomor WhatsApp maksimal 15 digit')
+        .regex(/^62\d+$/, 'Nomor WhatsApp harus diawali 62 dan hanya berisi angka')
+        .optional()
+        .or(z.literal('')),
 })
 
 export const loginSchema = z.object({
@@ -14,6 +20,13 @@ export const loginSchema = z.object({
 export const updateProfileSchema = z.object({
     username: z.string().trim().min(3, 'Username minimal 3 karakter'),
     email: z.string().trim().email('Format email tidak valid'),
+    whatsapp: z.string().trim()
+        .min(10, 'Nomor WhatsApp minimal 10 digit')
+        .max(15, 'Nomor WhatsApp maksimal 15 digit')
+        .regex(/^62\d+$/, 'Nomor WhatsApp harus diawali 62 dan hanya berisi angka')
+        .optional()
+        .or(z.literal(''))
+        .nullable(),
 })
 
 export const changePasswordSchema = z.object({
