@@ -1,8 +1,41 @@
-import { Response } from 'express'
+import { Request, Response } from 'express'
+import { z } from 'zod'
 import { prisma } from '../config/adapterDB'
 import { AuthRequest } from '../middlewares/auth'
 import { createTransactionSchema, updateTransactionSchema, transactionQuerySchema } from '../validations/transaction'
 import { findOwnedCategory } from '../utils/category-ownership'
+
+const phoneSchema = z.string().trim()
+    .min(10, 'Nomor handphone minimal 10 digit')
+    .max(16, 'Nomor handphone maksimal 16 karakter')
+    .regex(/^(\+62|62|0)\d{8,13}$/, 'Format nomor handphone tidak valid (contoh: 082187199940)')
+
+const createTransactionWithNumberSchema = createTransactionSchema.extend({
+    phoneNumber: phoneSchema.optional(),
+    whatsapp: phoneSchema.optional(),
+    phone: phoneSchema.optional(),
+}).refine((data) => data.phoneNumber || data.whatsapp || data.phone, {
+    message: 'Nomor handphone wajib diisi',
+    path: ['phoneNumber'],
+})
+
+type CreateTransactionInput = z.infer<typeof createTransactionSchema>
+
+function formatWhatsapp(phone: string): string {
+    const cleaned = phone.trim()
+
+    if (cleaned.startsWith('+62')) {
+        return cleaned
+    }
+    if (cleaned.startsWith('62')) {
+        return '+' + cleaned
+    }
+    if (cleaned.startsWith('0')) {
+        return '+62' + cleaned.slice(1)
+    }
+
+    return '+62' + cleaned
+}
 
 function parseDateBoundary(value: string, boundary: 'start' | 'end'): Date {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -16,6 +49,92 @@ function parseDateBoundary(value: string, boundary: 'start' | 'end'): Date {
     }
 
     return date
+}
+
+async function createTransactionForUser(userId: string, data: CreateTransactionInput) {
+    const { date, ...rest } = data
+    const category = await findOwnedCategory({
+        userId,
+        categoryId: rest.categoryId,
+    })
+    console.log(category)
+    if (!category) {
+        return {
+            status: 400,
+            body: { message: 'Kategori tidak valid atau bukan milik user' },
+        }
+    }
+
+    const transactionType = category.type
+    const transactionDate = new Date(date)
+    const transaction = await prisma.transaction.create({
+        data: {
+            ...rest,
+            type: transactionType,
+            date: transactionDate,
+            userId,
+        },
+        include: { category: { select: { id: true, name: true, icon: true, type: true } } },
+    })
+
+    let budgetWarning: {
+        categoryName: string
+        budgetAmount: number
+        totalSpent: number
+        overAmount: number
+    } | null = null
+
+    if (transactionType === 'EXPENSE') {
+        const txMonth = transactionDate.getMonth() + 1
+        const txYear = transactionDate.getFullYear()
+
+        const budget = await prisma.budget.findUnique({
+            where: {
+                userId_categoryId_month_year: {
+                    userId,
+                    categoryId: rest.categoryId,
+                    month: txMonth,
+                    year: txYear,
+                },
+            },
+        })
+
+        if (budget) {
+            const startOfMonth = new Date(txYear, txMonth - 1, 1)
+            const endOfMonth = new Date(txYear, txMonth, 0, 23, 59, 59, 999)
+
+            const aggregate = await prisma.transaction.aggregate({
+                where: {
+                    userId,
+                    categoryId: rest.categoryId,
+                    type: transactionType,
+                    date: { gte: startOfMonth, lte: endOfMonth },
+                },
+                _sum: { amount: true },
+            })
+
+            const totalSpent = Number(aggregate._sum.amount || 0)
+            const budgetAmount = Number(budget.amount)
+
+            if (totalSpent > budgetAmount) {
+                budgetWarning = {
+                    categoryName: category.name,
+                    budgetAmount,
+                    totalSpent,
+                    overAmount: totalSpent - budgetAmount,
+                }
+            }
+        }
+    }
+
+    return {
+        status: 201,
+        body: {
+            message: 'Transaksi berhasil ditambahkan',
+            transaction,
+            budgetWarning,
+        },
+    }
 }
 
 // GET /api/transactions?type=&categoryId=&month=&year=&startDate=&endDate=&page=&limit=
@@ -112,6 +231,43 @@ export const getTransactionById = async (req: AuthRequest, res: Response): Promi
     }
 }
 
+export const createTransactionWithNumber = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const parsed = createTransactionWithNumberSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({ message: 'Validasi gagal', errors: parsed.error.flatten().fieldErrors })
+            return
+        }
+
+        const { phoneNumber, whatsapp, phone, ...transactionData } = parsed.data
+        const phoneInput = phoneNumber ?? whatsapp ?? phone
+        const formattedPhone = formatWhatsapp(phoneInput!)
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { whatsapp: formattedPhone },
+                    { whatsapp: phoneInput },
+                ],
+            },
+            select: { id: true },
+        })
+
+        if (!user) {
+            res.status(404).json({ message: 'User dengan nomor handphone tersebut tidak ditemukan' })
+            return
+        }
+
+        console.log(user)
+
+        const result = await createTransactionForUser(user.id, transactionData)
+        res.status(result.status).json(result.body)
+    } catch (err) {
+        console.error('Create transaction by phone number error:', err)
+        res.status(500).json({ message: 'Terjadi kesalahan server' })
+    }
+}
+
 // POST /api/transactions
 export const createTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -121,84 +277,8 @@ export const createTransaction = async (req: AuthRequest, res: Response): Promis
             return
         }
 
-        const { date, ...rest } = parsed.data
-        const category = await findOwnedCategory({
-            userId: req.userId!,
-            categoryId: rest.categoryId,
-            type: rest.type,
-        })
-
-        if (!category) {
-            res.status(400).json({ message: 'Kategori tidak valid atau bukan milik user' })
-            return
-        }
-
-        const transactionDate = new Date(date)
-        const transaction = await prisma.transaction.create({
-            data: {
-                ...rest,
-                date: transactionDate,
-                userId: req.userId!,
-            },
-            include: { category: { select: { id: true, name: true, icon: true, type: true } } },
-        })
-
-        // Check budget warning for EXPENSE transactions
-        let budgetWarning: {
-            categoryName: string
-            budgetAmount: number
-            totalSpent: number
-            overAmount: number
-        } | null = null
-
-        if (rest.type === 'EXPENSE') {
-            const txMonth = transactionDate.getMonth() + 1
-            const txYear = transactionDate.getFullYear()
-
-            const budget = await prisma.budget.findUnique({
-                where: {
-                    userId_categoryId_month_year: {
-                        userId: req.userId!,
-                        categoryId: rest.categoryId,
-                        month: txMonth,
-                        year: txYear,
-                    },
-                },
-            })
-
-            if (budget) {
-                const startOfMonth = new Date(txYear, txMonth - 1, 1)
-                const endOfMonth = new Date(txYear, txMonth, 0, 23, 59, 59, 999)
-
-                const aggregate = await prisma.transaction.aggregate({
-                    where: {
-                        userId: req.userId!,
-                        categoryId: rest.categoryId,
-                        type: 'EXPENSE',
-                        date: { gte: startOfMonth, lte: endOfMonth },
-                    },
-                    _sum: { amount: true },
-                })
-
-                const totalSpent = Number(aggregate._sum.amount || 0)
-                const budgetAmount = Number(budget.amount)
-
-                if (totalSpent > budgetAmount) {
-                    budgetWarning = {
-                        categoryName: category.name,
-                        budgetAmount,
-                        totalSpent,
-                        overAmount: totalSpent - budgetAmount,
-                    }
-                }
-            }
-        }
-
-        res.status(201).json({
-            message: 'Transaksi berhasil ditambahkan',
-            transaction,
-            budgetWarning,
-        })
+        const result = await createTransactionForUser(req.userId!, parsed.data)
+        res.status(result.status).json(result.body)
     } catch (err) {
         console.error('Create transaction error:', err)
         res.status(500).json({ message: 'Terjadi kesalahan server' })
@@ -229,11 +309,15 @@ export const updateTransaction = async (req: AuthRequest, res: Response): Promis
             const category = await findOwnedCategory({
                 userId: req.userId!,
                 categoryId: rest.categoryId,
-                type: existingTransaction.type,
             })
 
             if (!category) {
                 res.status(400).json({ message: 'Kategori tidak valid atau bukan milik user' })
+                return
+            }
+
+            if (category.type !== existingTransaction.type) {
+                res.status(400).json({ message: 'Tipe kategori tidak sesuai dengan tipe transaksi' })
                 return
             }
         }

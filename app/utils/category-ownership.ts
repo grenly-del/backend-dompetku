@@ -18,20 +18,19 @@ type FindOwnedCategoriesParams = {
 export const findOwnedCategory = async ({
     userId,
     categoryId,
-    type,
     requireActive = true,
 }: FindOwnedCategoryParams) => {
+    console.log(userId, categoryId, requireActive)
     return prisma.category.findFirst({
         where: {
-            id: categoryId,
-            userId,
-            ...(type && { type }),
-            ...(requireActive && { isActive: true }),
+            id: categoryId.trim(),
+            userId: userId.trim(),
         },
         select: {
             id: true,
             name: true,
             type: true,
+            isActive: true,
         },
     })
 }

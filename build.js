@@ -1,11 +1,14 @@
 // build.js
 const esbuild = require("esbuild");
+const { execFileSync } = require("child_process");
 const { rmSync } = require("fs");
+
+execFileSync(process.execPath, [require.resolve("prisma/build/index.js"), "generate"], {
+  stdio: "inherit",
+});
 
 // Hapus dist lama
 rmSync("dist", { recursive: true, force: true });
-
-// build.js
 
 esbuild.build({
   entryPoints: ["app/server.ts"],

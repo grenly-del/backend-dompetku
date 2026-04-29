@@ -34389,20 +34389,19 @@ var transactionQuerySchema = external_exports.object({
 var findOwnedCategory = async ({
   userId,
   categoryId,
-  type,
   requireActive = true
 }) => {
   return prisma.category.findFirst({
     where: {
-      id: categoryId,
-      userId,
-      ...type && { type },
+      id: categoryId.trim(),
+      userId: userId.trim(),
       ...requireActive && { isActive: true }
     },
     select: {
       id: true,
       name: true,
-      type: true
+      type: true,
+      isActive: true
     }
   });
 };
@@ -34432,6 +34431,28 @@ var findOwnedCategories = async ({
 };
 
 // app/controllers/transaction.controller.ts
+var phoneSchema2 = external_exports.string().trim().min(10, "Nomor handphone minimal 10 digit").max(16, "Nomor handphone maksimal 16 karakter").regex(/^(\+62|62|0)\d{8,13}$/, "Format nomor handphone tidak valid (contoh: 082187199940)");
+var createTransactionWithNumberSchema = createTransactionSchema.extend({
+  phoneNumber: phoneSchema2.optional(),
+  whatsapp: phoneSchema2.optional(),
+  phone: phoneSchema2.optional()
+}).refine((data) => data.phoneNumber || data.whatsapp || data.phone, {
+  message: "Nomor handphone wajib diisi",
+  path: ["phoneNumber"]
+});
+function formatWhatsapp2(phone) {
+  const cleaned = phone.trim();
+  if (cleaned.startsWith("+62")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("62")) {
+    return "+" + cleaned;
+  }
+  if (cleaned.startsWith("0")) {
+    return "+62" + cleaned.slice(1);
+  }
+  return "+62" + cleaned;
+}
 function parseDateBoundary(value, boundary) {
   const date5 = /^\d{4}-\d{2}-\d{2}$/.test(value) ? /* @__PURE__ */ new Date(`${value}T00:00:00`) : new Date(value);
   if (boundary === "start") {
@@ -34440,6 +34461,76 @@ function parseDateBoundary(value, boundary) {
     date5.setHours(23, 59, 59, 999);
   }
   return date5;
+}
+async function createTransactionForUser(userId, data) {
+  const { date: date5, ...rest } = data;
+  const category = await findOwnedCategory({
+    userId,
+    categoryId: rest.categoryId
+  });
+  if (!category) {
+    return {
+      status: 400,
+      body: { message: "Kategori tidak valid atau bukan milik user" }
+    };
+  }
+  const transactionType = category.type;
+  const transactionDate = new Date(date5);
+  const transaction = await prisma.transaction.create({
+    data: {
+      ...rest,
+      type: transactionType,
+      date: transactionDate,
+      userId
+    },
+    include: { category: { select: { id: true, name: true, icon: true, type: true } } }
+  });
+  let budgetWarning = null;
+  if (transactionType === "EXPENSE") {
+    const txMonth = transactionDate.getMonth() + 1;
+    const txYear = transactionDate.getFullYear();
+    const budget = await prisma.budget.findUnique({
+      where: {
+        userId_categoryId_month_year: {
+          userId,
+          categoryId: rest.categoryId,
+          month: txMonth,
+          year: txYear
+        }
+      }
+    });
+    if (budget) {
+      const startOfMonth = new Date(txYear, txMonth - 1, 1);
+      const endOfMonth = new Date(txYear, txMonth, 0, 23, 59, 59, 999);
+      const aggregate = await prisma.transaction.aggregate({
+        where: {
+          userId,
+          categoryId: rest.categoryId,
+          type: transactionType,
+          date: { gte: startOfMonth, lte: endOfMonth }
+        },
+        _sum: { amount: true }
+      });
+      const totalSpent = Number(aggregate._sum.amount || 0);
+      const budgetAmount = Number(budget.amount);
+      if (totalSpent > budgetAmount) {
+        budgetWarning = {
+          categoryName: category.name,
+          budgetAmount,
+          totalSpent,
+          overAmount: totalSpent - budgetAmount
+        };
+      }
+    }
+  }
+  return {
+    status: 201,
+    body: {
+      message: "Transaksi berhasil ditambahkan",
+      transaction,
+      budgetWarning
+    }
+  };
 }
 var getTransactions = async (req, res) => {
   try {
@@ -34519,6 +34610,36 @@ var getTransactionById = async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan server" });
   }
 };
+var createTransactionWithNumber = async (req, res) => {
+  try {
+    const parsed = createTransactionWithNumberSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Validasi gagal", errors: parsed.error.flatten().fieldErrors });
+      return;
+    }
+    const { phoneNumber, whatsapp, phone, ...transactionData } = parsed.data;
+    const phoneInput = phoneNumber ?? whatsapp ?? phone;
+    const formattedPhone = formatWhatsapp2(phoneInput);
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { whatsapp: formattedPhone },
+          { whatsapp: phoneInput }
+        ]
+      },
+      select: { id: true }
+    });
+    if (!user) {
+      res.status(404).json({ message: "User dengan nomor handphone tersebut tidak ditemukan" });
+      return;
+    }
+    const result = await createTransactionForUser(user.id, transactionData);
+    res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error("Create transaction by phone number error:", err);
+    res.status(500).json({ message: "Terjadi kesalahan server" });
+  }
+};
 var createTransaction = async (req, res) => {
   try {
     const parsed = createTransactionSchema.safeParse(req.body);
@@ -34526,68 +34647,8 @@ var createTransaction = async (req, res) => {
       res.status(400).json({ message: "Validasi gagal", errors: parsed.error.flatten().fieldErrors });
       return;
     }
-    const { date: date5, ...rest } = parsed.data;
-    const category = await findOwnedCategory({
-      userId: req.userId,
-      categoryId: rest.categoryId,
-      type: rest.type
-    });
-    if (!category) {
-      res.status(400).json({ message: "Kategori tidak valid atau bukan milik user" });
-      return;
-    }
-    const transactionDate = new Date(date5);
-    const transaction = await prisma.transaction.create({
-      data: {
-        ...rest,
-        date: transactionDate,
-        userId: req.userId
-      },
-      include: { category: { select: { id: true, name: true, icon: true, type: true } } }
-    });
-    let budgetWarning = null;
-    if (rest.type === "EXPENSE") {
-      const txMonth = transactionDate.getMonth() + 1;
-      const txYear = transactionDate.getFullYear();
-      const budget = await prisma.budget.findUnique({
-        where: {
-          userId_categoryId_month_year: {
-            userId: req.userId,
-            categoryId: rest.categoryId,
-            month: txMonth,
-            year: txYear
-          }
-        }
-      });
-      if (budget) {
-        const startOfMonth = new Date(txYear, txMonth - 1, 1);
-        const endOfMonth = new Date(txYear, txMonth, 0, 23, 59, 59, 999);
-        const aggregate = await prisma.transaction.aggregate({
-          where: {
-            userId: req.userId,
-            categoryId: rest.categoryId,
-            type: "EXPENSE",
-            date: { gte: startOfMonth, lte: endOfMonth }
-          },
-          _sum: { amount: true }
-        });
-        const totalSpent = Number(aggregate._sum.amount || 0);
-        const budgetAmount = Number(budget.amount);
-        if (totalSpent > budgetAmount) {
-          budgetWarning = {
-            categoryName: category.name,
-            budgetAmount,
-            totalSpent,
-            overAmount: totalSpent - budgetAmount
-          };
-        }
-      }
-    }
-    res.status(201).json({
-      message: "Transaksi berhasil ditambahkan",
-      transaction,
-      budgetWarning
-    });
+    const result = await createTransactionForUser(req.userId, parsed.data);
+    res.status(result.status).json(result.body);
   } catch (err) {
     console.error("Create transaction error:", err);
     res.status(500).json({ message: "Terjadi kesalahan server" });
@@ -34612,11 +34673,14 @@ var updateTransaction = async (req, res) => {
     if (rest.categoryId) {
       const category = await findOwnedCategory({
         userId: req.userId,
-        categoryId: rest.categoryId,
-        type: existingTransaction.type
+        categoryId: rest.categoryId
       });
       if (!category) {
         res.status(400).json({ message: "Kategori tidak valid atau bukan milik user" });
+        return;
+      }
+      if (category.type !== existingTransaction.type) {
+        res.status(400).json({ message: "Tipe kategori tidak sesuai dengan tipe transaksi" });
         return;
       }
     }
@@ -35025,6 +35089,7 @@ router6.use("/categories", category_routes_default);
 router6.use("/transactions", transaction_routes_default);
 router6.use("/budgets", budget_routes_default);
 router6.use("/summary", summary_routes_default);
+router6.post("/create-transaction", createTransactionWithNumber);
 var routes_default = router6;
 
 // app/server.ts
